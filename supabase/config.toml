@@ -1,1 +1,13 @@
 project_id = "lsisqkrzhtpxyhfmwnhq"
+
+[functions.ai-chat]
+verify_jwt = true
+
+[functions.ai-analyze-test]
+verify_jwt = true
+
+[functions.ai-generate-lesson]
+verify_jwt = true
+
+[functions.ai-learning-path]
+verify_jwt = true
