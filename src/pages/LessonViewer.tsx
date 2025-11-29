@@ -20,6 +20,7 @@ import { Layout } from '@/components/layout/Layout';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { updateGamification } from '@/hooks/useGamification';
 import { AIChatTutor, AIChatButton } from '@/components/chat/AIChatTutor';
 
 interface LessonContent {
@@ -161,11 +162,13 @@ export default function LessonViewer() {
         completed_at: new Date().toISOString(),
       });
 
-      // Update points
-      await supabase
-        .from('profiles')
-        .update({ points: (user as any).points + 50 })
-        .eq('id', user.id);
+      // Update gamification (points, streak, achievements)
+      await updateGamification({
+        userId: user.id,
+        pointsEarned: 50,
+        lessonCompleted: true,
+        topicId: lesson?.topic_id,
+      });
 
       toast({
         title: 'Урок завершен! 🎉',

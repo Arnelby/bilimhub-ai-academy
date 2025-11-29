@@ -1,14 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   BookOpen, 
   Search, 
-  Filter,
   Clock,
   CheckCircle,
   Play,
   Lock,
-  ChevronRight
+  ChevronRight,
+  Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,6 +16,8 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Layout } from '@/components/layout/Layout';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import {
   Select,
   SelectContent,
@@ -24,75 +26,31 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
-// Mock data for lessons
-const mockLessons = [
-  {
-    id: '1',
-    title: 'Квадратные уравнения',
-    subject: 'mathematics',
-    topic: 'Алгебра',
-    level: 1,
-    duration: '25 мин',
-    progress: 100,
-    status: 'completed',
-    description: 'Научитесь решать квадратные уравнения различными методами.',
-  },
-  {
-    id: '2',
-    title: 'Системы уравнений',
-    subject: 'mathematics',
-    topic: 'Алгебра',
-    level: 2,
-    duration: '30 мин',
-    progress: 60,
-    status: 'in-progress',
-    description: 'Методы решения систем линейных и нелинейных уравнений.',
-  },
-  {
-    id: '3',
-    title: 'Тригонометрические функции',
-    subject: 'mathematics',
-    topic: 'Тригонометрия',
-    level: 3,
-    duration: '35 мин',
-    progress: 0,
-    status: 'not-started',
-    description: 'Основные тригонометрические функции и их свойства.',
-  },
-  {
-    id: '4',
-    title: 'Производная функции',
-    subject: 'mathematics',
-    topic: 'Анализ',
-    level: 4,
-    duration: '40 мин',
-    progress: 0,
-    status: 'locked',
-    description: 'Понятие производной и правила дифференцирования.',
-  },
-  {
-    id: '5',
-    title: 'Геометрические фигуры',
-    subject: 'mathematics',
-    topic: 'Геометрия',
-    level: 1,
-    duration: '20 мин',
-    progress: 100,
-    status: 'completed',
-    description: 'Основные свойства плоских геометрических фигур.',
-  },
-  {
-    id: '6',
-    title: 'Логарифмы',
-    subject: 'mathematics',
-    topic: 'Алгебра',
-    level: 3,
-    duration: '30 мин',
-    progress: 25,
-    status: 'in-progress',
-    description: 'Свойства логарифмов и логарифмические уравнения.',
-  },
-];
+interface Lesson {
+  id: string;
+  title: string;
+  title_ru: string | null;
+  topic_id: string | null;
+  duration_minutes: number | null;
+  difficulty_level: number | null;
+  topic?: {
+    id: string;
+    title: string;
+    title_ru: string | null;
+    subject: string;
+  };
+}
+
+interface LessonProgress {
+  lesson_id: string;
+  completed: boolean;
+  progress_percentage: number;
+}
+
+interface LessonWithProgress extends Lesson {
+  progress: number;
+  status: 'completed' | 'in-progress' | 'not-started' | 'locked';
+}
 
 const subjects = [
   { value: 'all', label: 'Все предметы' },
@@ -125,18 +83,101 @@ const statusConfig = {
 } as const;
 
 export default function Lessons() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const { user } = useAuth();
+  const [lessons, setLessons] = useState<LessonWithProgress[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
 
-  const filteredLessons = mockLessons.filter((lesson) => {
-    const matchesSearch = lesson.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      lesson.topic.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesSubject = selectedSubject === 'all' || lesson.subject === selectedSubject;
+  useEffect(() => {
+    async function fetchLessons() {
+      if (!user) return;
+
+      try {
+        // Fetch all lessons with topics
+        const { data: lessonsData, error: lessonsError } = await supabase
+          .from('lessons')
+          .select('*, topic:topics(*)')
+          .order('difficulty_level', { ascending: true });
+
+        if (lessonsError) throw lessonsError;
+
+        // Fetch user progress
+        const { data: progressData, error: progressError } = await supabase
+          .from('user_lesson_progress')
+          .select('*')
+          .eq('user_id', user.id);
+
+        if (progressError) throw progressError;
+
+        // Map progress to lessons
+        const progressMap = new Map<string, LessonProgress>();
+        progressData?.forEach(p => {
+          progressMap.set(p.lesson_id, p);
+        });
+
+        // Combine lessons with progress
+        const lessonsWithProgress: LessonWithProgress[] = (lessonsData || []).map((lesson, index) => {
+          const progress = progressMap.get(lesson.id);
+          let status: LessonWithProgress['status'] = 'not-started';
+          
+          if (progress?.completed) {
+            status = 'completed';
+          } else if (progress && progress.progress_percentage > 0) {
+            status = 'in-progress';
+          } else if (index > 0 && !progressMap.get(lessonsData[index - 1]?.id)?.completed && lesson.difficulty_level && lesson.difficulty_level > 2) {
+            status = 'locked';
+          }
+
+          return {
+            ...lesson,
+            progress: progress?.progress_percentage || 0,
+            status,
+          };
+        });
+
+        setLessons(lessonsWithProgress);
+      } catch (error) {
+        console.error('Error fetching lessons:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchLessons();
+  }, [user]);
+
+  const filteredLessons = lessons.filter((lesson) => {
+    const title = getLessonTitle(lesson);
+    const topicTitle = lesson.topic?.title_ru || lesson.topic?.title || '';
+    const matchesSearch = title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      topicTitle.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSubject = selectedSubject === 'all' || lesson.topic?.subject === selectedSubject;
     const matchesStatus = selectedStatus === 'all' || lesson.status === selectedStatus;
     return matchesSearch && matchesSubject && matchesStatus;
   });
+
+  function getLessonTitle(lesson: Lesson) {
+    if (language === 'ru' && lesson.title_ru) return lesson.title_ru;
+    return lesson.title;
+  }
+
+  function getTopicTitle(lesson: LessonWithProgress) {
+    if (language === 'ru' && lesson.topic?.title_ru) return lesson.topic.title_ru;
+    return lesson.topic?.title || '';
+  }
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="flex h-[60vh] items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-accent" />
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -187,7 +228,7 @@ export default function Lessons() {
         {/* Lessons Grid */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {filteredLessons.map((lesson) => {
-            const status = statusConfig[lesson.status as keyof typeof statusConfig];
+            const status = statusConfig[lesson.status];
             const StatusIcon = status.icon;
             const isLocked = lesson.status === 'locked';
 
@@ -203,16 +244,12 @@ export default function Lessons() {
                       <StatusIcon className="mr-1 h-3 w-3" />
                       {status.label}
                     </Badge>
-                    <span className="text-xs text-muted-foreground">Уровень {lesson.level}</span>
+                    <span className="text-xs text-muted-foreground">Уровень {lesson.difficulty_level || 1}</span>
                   </div>
-                  <CardTitle className="text-lg">{lesson.title}</CardTitle>
-                  <p className="text-sm text-muted-foreground">{lesson.topic}</p>
+                  <CardTitle className="text-lg">{getLessonTitle(lesson)}</CardTitle>
+                  <p className="text-sm text-muted-foreground">{getTopicTitle(lesson)}</p>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <p className="text-sm text-muted-foreground line-clamp-2">
-                    {lesson.description}
-                  </p>
-                  
                   {lesson.progress > 0 && lesson.status !== 'completed' && (
                     <div className="space-y-1">
                       <div className="flex justify-between text-xs text-muted-foreground">
@@ -226,7 +263,7 @@ export default function Lessons() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1 text-sm text-muted-foreground">
                       <Clock className="h-4 w-4" />
-                      <span>{lesson.duration}</span>
+                      <span>{lesson.duration_minutes || 15} мин</span>
                     </div>
                     <Button
                       variant={isLocked ? 'ghost' : lesson.status === 'in-progress' ? 'accent' : 'default'}

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Target, 
@@ -8,13 +8,16 @@ import {
   BarChart3,
   Calendar,
   Trophy,
-  ArrowRight
+  ArrowRight,
+  Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Layout } from '@/components/layout/Layout';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import {
   Select,
   SelectContent,
@@ -23,78 +26,117 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
-// Mock data for tests
-const mockTests = [
-  {
-    id: '1',
-    title: 'ОРТ Математика - Тест 1',
-    subject: 'mathematics',
-    type: 'ort',
-    questions: 60,
-    duration: '90 мин',
-    status: 'completed',
-    score: 85,
-    date: '2024-01-15',
-  },
-  {
-    id: '2',
-    title: 'ОРТ Математика - Тест 2',
-    subject: 'mathematics',
-    type: 'ort',
-    questions: 60,
-    duration: '90 мин',
-    status: 'completed',
-    score: 78,
-    date: '2024-01-18',
-  },
-  {
-    id: '3',
-    title: 'ОРТ Математика - Тест 3',
-    subject: 'mathematics',
-    type: 'ort',
-    questions: 60,
-    duration: '90 мин',
-    status: 'available',
-    score: null,
-    date: null,
-  },
-  {
-    id: '4',
-    title: 'Алгебра - Практический тест',
-    subject: 'mathematics',
-    type: 'practice',
-    questions: 20,
-    duration: '30 мин',
-    status: 'available',
-    score: null,
-    date: null,
-  },
-  {
-    id: '5',
-    title: 'Геометрия - Практический тест',
-    subject: 'mathematics',
-    type: 'practice',
-    questions: 15,
-    duration: '25 мин',
-    status: 'completed',
-    score: 92,
-    date: '2024-01-20',
-  },
-];
+interface Test {
+  id: string;
+  title: string;
+  title_ru: string | null;
+  subject: string;
+  type: string;
+  duration_minutes: number;
+  created_at: string;
+}
 
-const mockStats = {
-  testsCompleted: 12,
-  averageScore: 82,
-  bestScore: 95,
-  totalTime: '18 ч',
-};
+interface UserTest {
+  id: string;
+  test_id: string;
+  score: number | null;
+  completed_at: string | null;
+  total_questions: number | null;
+}
+
+interface TestWithStatus extends Test {
+  status: 'available' | 'completed';
+  userAttempt?: UserTest;
+  questionCount: number;
+}
 
 export default function Tests() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const { user } = useAuth();
+  const [tests, setTests] = useState<TestWithStatus[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedSubject, setSelectedSubject] = useState('all');
   const [selectedType, setSelectedType] = useState('all');
+  const [stats, setStats] = useState({
+    testsCompleted: 0,
+    averageScore: 0,
+    bestScore: 0,
+    totalTime: '0 ч',
+  });
 
-  const filteredTests = mockTests.filter((test) => {
+  useEffect(() => {
+    async function fetchTests() {
+      if (!user) return;
+
+      try {
+        // Fetch all tests with question counts
+        const { data: testsData, error: testsError } = await supabase
+          .from('tests')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (testsError) throw testsError;
+
+        // Fetch user's completed tests
+        const { data: userTests, error: userTestsError } = await supabase
+          .from('user_tests')
+          .select('*')
+          .eq('user_id', user.id)
+          .not('completed_at', 'is', null);
+
+        if (userTestsError) throw userTestsError;
+
+        // Fetch question counts for each test
+        const { data: questionCounts, error: qError } = await supabase
+          .from('questions')
+          .select('test_id');
+
+        if (qError) throw qError;
+
+        // Count questions per test
+        const questionCountMap: Record<string, number> = {};
+        questionCounts?.forEach(q => {
+          if (q.test_id) {
+            questionCountMap[q.test_id] = (questionCountMap[q.test_id] || 0) + 1;
+          }
+        });
+
+        // Map tests with their status
+        const testsWithStatus: TestWithStatus[] = (testsData || []).map(test => {
+          const userAttempt = userTests?.find(ut => ut.test_id === test.id);
+          return {
+            ...test,
+            status: userAttempt?.completed_at ? 'completed' : 'available',
+            userAttempt,
+            questionCount: questionCountMap[test.id] || 0,
+          };
+        });
+
+        setTests(testsWithStatus);
+
+        // Calculate stats
+        const completedTests = userTests?.filter(t => t.completed_at) || [];
+        const scores = completedTests.map(t => t.score || 0);
+        const avgScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+        const bestScore = scores.length > 0 ? Math.max(...scores) : 0;
+
+        setStats({
+          testsCompleted: completedTests.length,
+          averageScore: avgScore,
+          bestScore: bestScore,
+          totalTime: `${Math.round(completedTests.length * 1.5)} ч`,
+        });
+      } catch (error) {
+        console.error('Error fetching tests:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchTests();
+  }, [user]);
+
+  const filteredTests = tests.filter((test) => {
     const matchesSubject = selectedSubject === 'all' || test.subject === selectedSubject;
     const matchesType = selectedType === 'all' || test.type === selectedType;
     return matchesSubject && matchesType;
@@ -102,6 +144,21 @@ export default function Tests() {
 
   const completedTests = filteredTests.filter((test) => test.status === 'completed');
   const availableTests = filteredTests.filter((test) => test.status === 'available');
+
+  const getTestTitle = (test: Test) => {
+    if (language === 'ru' && test.title_ru) return test.title_ru;
+    return test.title;
+  };
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="flex h-[60vh] items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-accent" />
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -120,7 +177,7 @@ export default function Tests() {
                 <CheckCircle className="h-6 w-6" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{mockStats.testsCompleted}</p>
+                <p className="text-2xl font-bold">{stats.testsCompleted}</p>
                 <p className="text-sm text-muted-foreground">Тестов пройдено</p>
               </div>
             </CardContent>
@@ -131,7 +188,7 @@ export default function Tests() {
                 <BarChart3 className="h-6 w-6" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{mockStats.averageScore}%</p>
+                <p className="text-2xl font-bold">{stats.averageScore}%</p>
                 <p className="text-sm text-muted-foreground">Средний балл</p>
               </div>
             </CardContent>
@@ -142,7 +199,7 @@ export default function Tests() {
                 <Trophy className="h-6 w-6" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{mockStats.bestScore}%</p>
+                <p className="text-2xl font-bold">{stats.bestScore}%</p>
                 <p className="text-sm text-muted-foreground">Лучший результат</p>
               </div>
             </CardContent>
@@ -153,7 +210,7 @@ export default function Tests() {
                 <Clock className="h-6 w-6" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{mockStats.totalTime}</p>
+                <p className="text-2xl font-bold">{stats.totalTime}</p>
                 <p className="text-sm text-muted-foreground">Время на тесты</p>
               </div>
             </CardContent>
@@ -199,12 +256,12 @@ export default function Tests() {
                       </Badge>
                       <div className="flex items-center gap-1 text-sm text-muted-foreground">
                         <Clock className="h-4 w-4" />
-                        <span>{test.duration}</span>
+                        <span>{test.duration_minutes} мин</span>
                       </div>
                     </div>
-                    <CardTitle className="text-lg">{test.title}</CardTitle>
+                    <CardTitle className="text-lg">{getTestTitle(test)}</CardTitle>
                     <CardDescription>
-                      {test.questions} вопросов
+                      {test.questionCount} вопросов
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -242,22 +299,22 @@ export default function Tests() {
                       </Badge>
                       <div className="flex items-center gap-1 text-sm text-muted-foreground">
                         <Calendar className="h-4 w-4" />
-                        <span>{test.date}</span>
+                        <span>{test.userAttempt?.completed_at ? new Date(test.userAttempt.completed_at).toLocaleDateString('ru-RU') : ''}</span>
                       </div>
                     </div>
-                    <CardTitle className="text-lg">{test.title}</CardTitle>
+                    <CardTitle className="text-lg">{getTestTitle(test)}</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="mb-4 flex items-center justify-between">
                       <span className="text-sm text-muted-foreground">Результат</span>
                       <span className={`text-2xl font-bold ${
-                        test.score! >= 80 ? 'text-success' : test.score! >= 60 ? 'text-warning' : 'text-destructive'
+                        (test.userAttempt?.score || 0) >= 80 ? 'text-success' : (test.userAttempt?.score || 0) >= 60 ? 'text-warning' : 'text-destructive'
                       }`}>
-                        {test.score}%
+                        {test.userAttempt?.score || 0}%
                       </span>
                     </div>
                     <Button variant="outline" className="w-full" asChild>
-                      <Link to={`/tests/${test.id}/results`}>
+                      <Link to={`/tests/${test.id}/results/${test.userAttempt?.id}`}>
                         {t.tests.viewResults}
                         <ArrowRight className="ml-2 h-4 w-4" />
                       </Link>
