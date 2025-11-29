@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   User, 
@@ -10,14 +11,15 @@ import {
   TrendingUp,
   Calendar,
   Edit,
-  Star
+  Star,
+  Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { Layout } from '@/components/layout/Layout';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 import { StreakBadge } from '@/components/gamification/StreakBadge';
 import { PointsDisplay } from '@/components/gamification/PointsDisplay';
 import { LevelBadge } from '@/components/gamification/LevelBadge';
@@ -25,47 +27,191 @@ import { AchievementCard } from '@/components/gamification/AchievementCard';
 import { LearningTree } from '@/components/gamification/LearningTree';
 import { MasteryLevel } from '@/components/gamification/MasteryNode';
 
-// Mock user data
-const mockUser = {
-  name: 'Айбек Токтогулов',
-  email: 'aibek@example.com',
-  avatar: null,
-  joinDate: 'Январь 2024',
-  streak: 7,
-  points: 2450,
-  level: 5,
-  testsCompleted: 15,
-  lessonsCompleted: 28,
-  totalStudyTime: '24 ч 30 мин',
-  averageScore: 82,
-};
+interface Profile {
+  name: string | null;
+  email: string | null;
+  streak: number;
+  points: number;
+  level: number;
+  created_at: string | null;
+}
 
-const mockTopics: { id: string; title: string; level: MasteryLevel; progress?: number }[] = [
-  { id: '1', title: 'Алгебра', level: 'mastered' },
-  { id: '2', title: 'Геометрия', level: 'in-progress', progress: 75 },
-  { id: '3', title: 'Тригонометрия', level: 'in-progress', progress: 45 },
-  { id: '4', title: 'Функции', level: 'weak' },
-  { id: '5', title: 'Логарифмы', level: 'in-progress', progress: 20 },
-  { id: '6', title: 'Статистика', level: 'locked' },
-];
+interface TopicProgress {
+  id: string;
+  title: string;
+  level: MasteryLevel;
+  progress?: number;
+}
 
-const mockAchievements = [
-  { id: '1', title: 'Первый урок', description: 'Завершите первый урок', unlocked: true, icon: <BookOpen className="h-6 w-6" /> },
-  { id: '2', title: 'Первый тест', description: 'Завершите первый тест', unlocked: true, icon: <Target className="h-6 w-6" /> },
-  { id: '3', title: '7-дневный стрик', description: 'Учитесь 7 дней подряд', unlocked: true, icon: <Star className="h-6 w-6" /> },
-  { id: '4', title: 'Отличник', description: 'Получите 90%+ на тесте', unlocked: true, icon: <Trophy className="h-6 w-6" /> },
-  { id: '5', title: 'Мастер алгебры', description: 'Освойте все темы алгебры', unlocked: false, progress: 80 },
-  { id: '6', title: '30-дневный стрик', description: 'Учитесь 30 дней подряд', unlocked: false, progress: 23 },
-];
-
-const mockSavedTerms = [
-  { id: '1', term: 'Дискриминант', definition: 'D = b² - 4ac' },
-  { id: '2', term: 'Теорема Пифагора', definition: 'a² + b² = c²' },
-  { id: '3', term: 'Синус', definition: 'sin(α) = противолежащий катет / гипотенуза' },
-];
+interface SavedTerm {
+  id: string;
+  term: string;
+  definition: string | null;
+}
 
 export default function Profile() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const { user } = useAuth();
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [topics, setTopics] = useState<TopicProgress[]>([]);
+  const [achievements, setAchievements] = useState<any[]>([]);
+  const [savedTerms, setSavedTerms] = useState<SavedTerm[]>([]);
+  const [stats, setStats] = useState({
+    testsCompleted: 0,
+    lessonsCompleted: 0,
+    totalStudyTime: '0 ч',
+    averageScore: 0,
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user) {
+      fetchProfileData();
+    }
+  }, [user]);
+
+  async function fetchProfileData() {
+    if (!user) return;
+
+    try {
+      // Fetch profile
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (profileData) {
+        setProfile({
+          name: profileData.name,
+          email: profileData.email,
+          streak: profileData.streak || 0,
+          points: profileData.points || 0,
+          level: profileData.level || 1,
+          created_at: profileData.created_at,
+        });
+      }
+
+      // Fetch stats
+      const { data: testsData } = await supabase
+        .from('user_tests')
+        .select('*')
+        .eq('user_id', user.id)
+        .not('completed_at', 'is', null);
+
+      const { data: lessonsData } = await supabase
+        .from('user_lesson_progress')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('completed', true);
+
+      const scores = testsData?.map(t => t.score || 0) || [];
+      const avgScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+      const totalSeconds = lessonsData?.reduce((acc, l) => acc + (l.time_spent_seconds || 0), 0) || 0;
+      const hours = Math.floor(totalSeconds / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+
+      setStats({
+        testsCompleted: testsData?.length || 0,
+        lessonsCompleted: lessonsData?.length || 0,
+        totalStudyTime: `${hours} ч ${minutes} мин`,
+        averageScore: avgScore,
+      });
+
+      // Fetch topics with progress
+      const { data: topicsData } = await supabase
+        .from('topics')
+        .select('*')
+        .eq('subject', 'mathematics')
+        .order('order_index');
+
+      const { data: topicProgressData } = await supabase
+        .from('user_topic_progress')
+        .select('*')
+        .eq('user_id', user.id);
+
+      const progressMap = new Map(topicProgressData?.map(p => [p.topic_id, p]) || []);
+
+      const masteryMap: Record<string, MasteryLevel> = {
+        'mastered': 'mastered',
+        'in_progress': 'in-progress',
+        'weak': 'weak',
+        'not_attempted': 'locked',
+      };
+
+      const topicsWithProgress: TopicProgress[] = (topicsData || []).map(topic => {
+        const progress = progressMap.get(topic.id);
+        let level: MasteryLevel = 'locked';
+        
+        if (progress?.mastery) {
+          level = masteryMap[progress.mastery] || 'locked';
+        }
+
+        return {
+          id: topic.id,
+          title: language === 'ru' && topic.title_ru ? topic.title_ru : topic.title,
+          level,
+          progress: progress?.progress_percentage || 0,
+        };
+      });
+
+      setTopics(topicsWithProgress);
+
+      // Fetch achievements
+      const { data: achievementsData } = await supabase
+        .from('user_achievements')
+        .select('*')
+        .eq('user_id', user.id);
+
+      type AchievementType = 'first_lesson' | 'first_test' | 'streak_3' | 'streak_7' | 'streak_30' | 'mastery_5' | 'mastery_10' | 'perfect_score' | 'early_bird' | 'night_owl';
+      
+      const achievementsList: { id: AchievementType; title: string; description: string; icon?: React.ReactNode }[] = [
+        { id: 'first_lesson', title: 'Первый урок', description: 'Завершите первый урок', icon: <BookOpen className="h-6 w-6" /> },
+        { id: 'first_test', title: 'Первый тест', description: 'Завершите первый тест', icon: <Target className="h-6 w-6" /> },
+        { id: 'streak_3', title: '3-дневный стрик', description: 'Учитесь 3 дня подряд', icon: <Star className="h-6 w-6" /> },
+        { id: 'streak_7', title: '7-дневный стрик', description: 'Учитесь 7 дней подряд', icon: <Star className="h-6 w-6" /> },
+        { id: 'streak_30', title: '30-дневный стрик', description: 'Учитесь 30 дней подряд', icon: <Trophy className="h-6 w-6" /> },
+        { id: 'perfect_score', title: 'Отличник', description: 'Получите 100% на тесте', icon: <Trophy className="h-6 w-6" /> },
+      ];
+
+      const unlockedIds = new Set(achievementsData?.map(a => a.achievement) || []);
+      setAchievements(achievementsList.map(a => ({
+        ...a,
+        unlocked: unlockedIds.has(a.id),
+        progress: a.id.includes('streak') ? Math.min(100, ((profile?.streak || 0) / parseInt(a.id.split('_')[1] || '7')) * 100) : undefined,
+      })));
+
+      // Fetch saved terms
+      const { data: termsData } = await supabase
+        .from('saved_terms')
+        .select('*')
+        .eq('user_id', user.id)
+        .limit(5);
+
+      setSavedTerms(termsData || []);
+
+    } catch (error) {
+      console.error('Error fetching profile data:', error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const formatJoinDate = (dateStr: string | null) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
+  };
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="flex h-[60vh] items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-accent" />
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -79,18 +225,18 @@ export default function Profile() {
                   <User className="h-10 w-10" />
                 </div>
                 <div>
-                  <h1 className="text-2xl font-bold">{mockUser.name}</h1>
-                  <p className="text-muted-foreground">{mockUser.email}</p>
+                  <h1 className="text-2xl font-bold">{profile?.name || 'Студент'}</h1>
+                  <p className="text-muted-foreground">{profile?.email || user?.email}</p>
                   <p className="text-sm text-muted-foreground">
                     <Calendar className="mr-1 inline h-3 w-3" />
-                    Участник с {mockUser.joinDate}
+                    Участник с {formatJoinDate(profile?.created_at || null)}
                   </p>
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-3">
-                <StreakBadge streak={mockUser.streak} size="lg" />
-                <PointsDisplay points={mockUser.points} />
-                <LevelBadge level={mockUser.level} size="lg" />
+                <StreakBadge streak={profile?.streak || 0} size="lg" />
+                <PointsDisplay points={profile?.points || 0} />
+                <LevelBadge level={profile?.level || 1} size="lg" />
                 <Button variant="outline" size="sm">
                   <Edit className="mr-2 h-4 w-4" />
                   {t.profile.editProfile}
@@ -117,28 +263,28 @@ export default function Profile() {
                     <div className="flex h-10 w-10 mx-auto items-center justify-center rounded-full bg-accent/10 text-accent mb-2">
                       <Target className="h-5 w-5" />
                     </div>
-                    <p className="text-2xl font-bold">{mockUser.testsCompleted}</p>
+                    <p className="text-2xl font-bold">{stats.testsCompleted}</p>
                     <p className="text-sm text-muted-foreground">{t.profile.testsCompleted}</p>
                   </div>
                   <div className="rounded-lg bg-muted/50 p-4 text-center">
                     <div className="flex h-10 w-10 mx-auto items-center justify-center rounded-full bg-success/10 text-success mb-2">
                       <BookOpen className="h-5 w-5" />
                     </div>
-                    <p className="text-2xl font-bold">{mockUser.lessonsCompleted}</p>
+                    <p className="text-2xl font-bold">{stats.lessonsCompleted}</p>
                     <p className="text-sm text-muted-foreground">{t.profile.lessonsFinished}</p>
                   </div>
                   <div className="rounded-lg bg-muted/50 p-4 text-center">
                     <div className="flex h-10 w-10 mx-auto items-center justify-center rounded-full bg-warning/10 text-warning mb-2">
                       <Clock className="h-5 w-5" />
                     </div>
-                    <p className="text-2xl font-bold">{mockUser.totalStudyTime}</p>
+                    <p className="text-2xl font-bold">{stats.totalStudyTime}</p>
                     <p className="text-sm text-muted-foreground">{t.profile.totalStudyTime}</p>
                   </div>
                   <div className="rounded-lg bg-muted/50 p-4 text-center">
                     <div className="flex h-10 w-10 mx-auto items-center justify-center rounded-full bg-primary/10 text-primary mb-2">
                       <Trophy className="h-5 w-5" />
                     </div>
-                    <p className="text-2xl font-bold">{mockUser.averageScore}%</p>
+                    <p className="text-2xl font-bold">{stats.averageScore}%</p>
                     <p className="text-sm text-muted-foreground">{t.profile.averageScore}</p>
                   </div>
                 </div>
@@ -154,10 +300,16 @@ export default function Profile() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <LearningTree 
-                  topics={mockTopics}
-                  onTopicClick={(id) => console.log('Topic clicked:', id)}
-                />
+                {topics.length > 0 ? (
+                  <LearningTree 
+                    topics={topics}
+                    onTopicClick={(id) => console.log('Topic clicked:', id)}
+                  />
+                ) : (
+                  <p className="text-muted-foreground text-center py-8">
+                    Начните изучать уроки, чтобы увидеть прогресс
+                  </p>
+                )}
               </CardContent>
             </Card>
 
@@ -171,7 +323,7 @@ export default function Profile() {
               </CardHeader>
               <CardContent>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  {mockAchievements.map((achievement) => (
+                  {achievements.map((achievement) => (
                     <AchievementCard
                       key={achievement.id}
                       title={achievement.title}
@@ -197,18 +349,26 @@ export default function Profile() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {mockSavedTerms.map((term) => (
-                  <div
-                    key={term.id}
-                    className="rounded-lg border border-border p-3"
-                  >
-                    <p className="font-medium">{term.term}</p>
-                    <p className="text-sm text-muted-foreground">{term.definition}</p>
-                  </div>
-                ))}
-                <Button variant="ghost" className="w-full">
-                  Показать все термины
-                </Button>
+                {savedTerms.length > 0 ? (
+                  savedTerms.map((term) => (
+                    <div
+                      key={term.id}
+                      className="rounded-lg border border-border p-3"
+                    >
+                      <p className="font-medium">{term.term}</p>
+                      <p className="text-sm text-muted-foreground">{term.definition}</p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-muted-foreground text-center py-4 text-sm">
+                    Сохраненных терминов пока нет
+                  </p>
+                )}
+                {savedTerms.length > 0 && (
+                  <Button variant="ghost" className="w-full">
+                    Показать все термины
+                  </Button>
+                )}
               </CardContent>
             </Card>
 
@@ -219,9 +379,9 @@ export default function Profile() {
               </CardHeader>
               <CardContent className="space-y-2">
                 <Button variant="outline" className="w-full justify-start" asChild>
-                  <Link to="/settings">
+                  <Link to="/dashboard">
                     <Settings className="mr-2 h-4 w-4" />
-                    Настройки
+                    Панель управления
                   </Link>
                 </Button>
                 <Button variant="outline" className="w-full justify-start" asChild>

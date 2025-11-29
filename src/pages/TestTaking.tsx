@@ -8,6 +8,7 @@ import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { updateGamification } from '@/hooks/useGamification';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -186,6 +187,14 @@ export default function TestTaking() {
           ai_analysis: analysisData.analysis,
         })
         .eq('id', testAttemptId);
+
+      // Update gamification (points, streak, achievements)
+      const pointsEarned = Math.round(analysisData.score * 0.5) + 25; // Base 25 points + score bonus
+      await updateGamification({
+        userId: user.id,
+        pointsEarned,
+        testScore: analysisData.score,
+      });
 
       // Navigate to results
       navigate(`/tests/${testId}/results/${testAttemptId}`);
