@@ -28,6 +28,7 @@ interface Question {
   correct_option: number;
   explanation: string | null;
   order_index: number;
+  image_url: string | null;
 }
 
 interface Test {
@@ -266,9 +267,27 @@ export default function TestTaking() {
                 </Button>
               </div>
 
-              <p className="mb-6 text-lg font-medium">
-                {currentQuestion?.question_text_ru || currentQuestion?.question_text}
-              </p>
+              {/* Question Image */}
+              {currentQuestion?.image_url && (
+                <div className="mb-6 flex justify-center">
+                  <img 
+                    src={currentQuestion.image_url} 
+                    alt={`Вопрос ${currentIndex + 1}`}
+                    className="max-w-full rounded-lg border border-border"
+                    onError={(e) => {
+                      // Hide image if it fails to load
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
+                  />
+                </div>
+              )}
+
+              {/* Question Text (shown if no image or as fallback) */}
+              {(!currentQuestion?.image_url || currentQuestion?.question_text) && (
+                <p className="mb-6 text-lg font-medium whitespace-pre-line">
+                  {currentQuestion?.question_text_ru || currentQuestion?.question_text}
+                </p>
+              )}
 
               <div className="space-y-3">
                 {currentQuestion?.options.map((option, index) => (
