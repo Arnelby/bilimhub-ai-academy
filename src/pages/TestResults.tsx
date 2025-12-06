@@ -19,6 +19,8 @@ import { Progress } from '@/components/ui/progress';
 import { Layout } from '@/components/layout/Layout';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useGamificationEvents } from '@/hooks/useGamificationEvents';
+import { Confetti } from '@/components/gamification/Confetti';
 
 interface TestResult {
   id: string;
@@ -43,8 +45,10 @@ interface TestResult {
 export default function TestResults() {
   const { testId, attemptId } = useParams();
   const { user } = useAuth();
+  const { triggerEvent, triggerConfetti } = useGamificationEvents();
   const [result, setResult] = useState<TestResult | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showConfetti, setShowConfetti] = useState(false);
 
   useEffect(() => {
     async function fetchResults() {
@@ -62,6 +66,37 @@ export default function TestResults() {
 
         if (error) throw error;
         setResult(data as unknown as TestResult);
+
+        // Trigger gamification events
+        const score = data.score || 0;
+        const total = data.total_questions || 1;
+        const percentage = Math.round((score / total) * 100);
+        
+        // Award points based on score
+        const pointsEarned = Math.round(percentage / 2) + 25;
+        
+        setTimeout(() => {
+          triggerEvent({
+            type: 'test_completed',
+            value: pointsEarned,
+            description: `${percentage}% правильно`,
+          });
+        }, 500);
+
+        // Perfect score celebration
+        if (percentage === 100) {
+          setTimeout(() => {
+            triggerEvent({
+              type: 'perfect_score',
+              title: 'Идеальный результат!',
+              description: 'Вы ответили на все вопросы правильно!',
+            });
+            setShowConfetti(true);
+          }, 1500);
+        } else if (percentage >= 80) {
+          setShowConfetti(true);
+        }
+
       } catch (error) {
         console.error('Error fetching results:', error);
       } finally {
@@ -70,7 +105,7 @@ export default function TestResults() {
     }
 
     fetchResults();
-  }, [attemptId, user]);
+  }, [attemptId, user, triggerEvent]);
 
   if (loading) {
     return (

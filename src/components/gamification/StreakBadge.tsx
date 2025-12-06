@@ -25,7 +25,7 @@ export function StreakBadge({ streak, size = 'md', className }: StreakBadgeProps
       className={cn(
         'inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-warning to-destructive font-bold',
         sizeClasses[size],
-        streak > 0 && 'animate-pulse-glow',
+        streak > 0 && 'animate-pulse-slow',
         className
       )}
     >

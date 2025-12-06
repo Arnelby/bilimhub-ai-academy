@@ -1,0 +1,228 @@
+import { useState, useEffect } from 'react';
+import { Trophy, Medal, Crown, TrendingUp, Users } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { cn } from '@/lib/utils';
+
+interface LeaderboardEntry {
+  id: string;
+  name: string | null;
+  avatar_url: string | null;
+  points: number;
+  level: number;
+  streak: number;
+  rank: number;
+}
+
+interface LeaderboardProps {
+  limit?: number;
+  showTabs?: boolean;
+  className?: string;
+}
+
+export function Leaderboard({ limit = 10, showTabs = true, className }: LeaderboardProps) {
+  const { user } = useAuth();
+  const [leaders, setLeaders] = useState<LeaderboardEntry[]>([]);
+  const [weeklyLeaders, setWeeklyLeaders] = useState<LeaderboardEntry[]>([]);
+  const [userRank, setUserRank] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchLeaderboard();
+  }, [user]);
+
+  async function fetchLeaderboard() {
+    try {
+      // Fetch all-time leaders
+      const { data: allTimeData } = await supabase
+        .from('profiles')
+        .select('id, name, avatar_url, points, level, streak')
+        .order('points', { ascending: false })
+        .limit(limit);
+
+      const allTimeLeaders = (allTimeData || []).map((entry, index) => ({
+        ...entry,
+        rank: index + 1,
+      }));
+      setLeaders(allTimeLeaders);
+
+      // Find user's rank
+      if (user) {
+        const { data: allProfiles } = await supabase
+          .from('profiles')
+          .select('id, points')
+          .order('points', { ascending: false });
+
+        const rank = (allProfiles || []).findIndex(p => p.id === user.id) + 1;
+        setUserRank(rank > 0 ? rank : null);
+      }
+
+      // For weekly, we use last_activity_date and recent points
+      // In a real app, you'd have a weekly points tracking table
+      const { data: weeklyData } = await supabase
+        .from('profiles')
+        .select('id, name, avatar_url, points, level, streak, last_activity_date')
+        .not('last_activity_date', 'is', null)
+        .order('points', { ascending: false })
+        .limit(limit);
+
+      const weeklyLeadersData = (weeklyData || []).map((entry, index) => ({
+        ...entry,
+        rank: index + 1,
+      }));
+      setWeeklyLeaders(weeklyLeadersData);
+
+    } catch (error) {
+      console.error('Error fetching leaderboard:', error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const getRankIcon = (rank: number) => {
+    switch (rank) {
+      case 1:
+        return <Crown className="h-5 w-5 text-warning" />;
+      case 2:
+        return <Medal className="h-5 w-5 text-muted-foreground" />;
+      case 3:
+        return <Medal className="h-5 w-5 text-warning/70" />;
+      default:
+        return <span className="text-sm font-medium text-muted-foreground">#{rank}</span>;
+    }
+  };
+
+  const getRankStyle = (rank: number) => {
+    switch (rank) {
+      case 1:
+        return 'bg-gradient-to-r from-warning/20 to-warning/5 border-warning/30';
+      case 2:
+        return 'bg-gradient-to-r from-muted/50 to-muted/20 border-muted-foreground/30';
+      case 3:
+        return 'bg-gradient-to-r from-warning/10 to-warning/5 border-warning/20';
+      default:
+        return '';
+    }
+  };
+
+  const LeaderboardList = ({ data }: { data: LeaderboardEntry[] }) => (
+    <div className="space-y-2">
+      {data.map((entry) => {
+        const isCurrentUser = user?.id === entry.id;
+        return (
+          <div
+            key={entry.id}
+            className={cn(
+              'flex items-center gap-3 rounded-lg border p-3 transition-all',
+              getRankStyle(entry.rank),
+              isCurrentUser && 'ring-2 ring-accent',
+              'hover:bg-muted/50'
+            )}
+          >
+            <div className="flex h-8 w-8 items-center justify-center">
+              {getRankIcon(entry.rank)}
+            </div>
+            <Avatar className="h-10 w-10">
+              <AvatarImage src={entry.avatar_url || undefined} />
+              <AvatarFallback className="bg-accent/10 text-accent">
+                {entry.name?.charAt(0)?.toUpperCase() || 'U'}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+              <p className="font-medium truncate">
+                {entry.name || 'Студент'}
+                {isCurrentUser && <span className="ml-2 text-xs text-accent">(вы)</span>}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Уровень {entry.level} • Стрик {entry.streak}🔥
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="font-bold text-accent">{entry.points.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground">XP</p>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  if (loading) {
+    return (
+      <Card className={className}>
+        <CardContent className="p-6">
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-16 animate-pulse rounded-lg bg-muted" />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!showTabs) {
+    return (
+      <Card className={className}>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Trophy className="h-5 w-5 text-warning" />
+            Лидеры
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <LeaderboardList data={leaders} />
+          {userRank && userRank > limit && (
+            <div className="mt-4 rounded-lg bg-accent/10 p-3 text-center">
+              <p className="text-sm">
+                Ваше место: <span className="font-bold text-accent">#{userRank}</span>
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className={className}>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Trophy className="h-5 w-5 text-warning" />
+          Таблица лидеров
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Tabs defaultValue="alltime">
+          <TabsList className="w-full mb-4">
+            <TabsTrigger value="alltime" className="flex-1">
+              <Users className="h-4 w-4 mr-2" />
+              Все время
+            </TabsTrigger>
+            <TabsTrigger value="weekly" className="flex-1">
+              <TrendingUp className="h-4 w-4 mr-2" />
+              На этой неделе
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent value="alltime">
+            <LeaderboardList data={leaders} />
+          </TabsContent>
+          <TabsContent value="weekly">
+            <LeaderboardList data={weeklyLeaders} />
+          </TabsContent>
+        </Tabs>
+        {userRank && userRank > limit && (
+          <div className="mt-4 rounded-lg bg-accent/10 p-3 text-center">
+            <p className="text-sm">
+              Ваше место: <span className="font-bold text-accent">#{userRank}</span>
+            </p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}

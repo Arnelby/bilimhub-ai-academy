@@ -12,7 +12,8 @@ import {
   Calendar,
   Brain,
   Loader2,
-  RefreshCw
+  RefreshCw,
+  Trophy
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -29,6 +30,9 @@ import { LevelBadge } from '@/components/gamification/LevelBadge';
 import { LearningTree } from '@/components/gamification/LearningTree';
 import { AchievementCard } from '@/components/gamification/AchievementCard';
 import { MasteryLevel } from '@/components/gamification/MasteryNode';
+import { Leaderboard } from '@/components/gamification/Leaderboard';
+import { XPProgress } from '@/components/gamification/XPProgress';
+import { StreakCalendar } from '@/components/gamification/StreakCalendar';
 
 interface Profile {
   name: string | null;
@@ -562,6 +566,38 @@ export default function Dashboard() {
                 )}
               </CardContent>
             </Card>
+
+            {/* XP Progress */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Zap className="h-5 w-5 text-accent" />
+                  Прогресс XP
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <XPProgress 
+                  currentXP={profile?.points || 0} 
+                  level={profile?.level || 1} 
+                />
+              </CardContent>
+            </Card>
+
+            {/* Streak Calendar */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="h-5 w-5 text-warning" />
+                  Ваш стрик
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <StreakCalendar streak={profile?.streak || 0} />
+              </CardContent>
+            </Card>
+
+            {/* Leaderboard */}
+            <Leaderboard limit={5} showTabs={false} />
 
             {/* Achievements */}
             <Card>
