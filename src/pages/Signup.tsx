@@ -1,32 +1,72 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Mail, Lock, User, ArrowRight } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Mail, Lock, User, ArrowRight, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Layout } from '@/components/layout/Layout';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
 import logo from '@/assets/bilimhub-logo.png';
 
 export default function Signup() {
   const { t } = useLanguage();
+  const { signUp, user, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (user) {
+      navigate('/dashboard');
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
+    
     if (password !== confirmPassword) {
-      alert('Пароли не совпадают');
+      setError('Пароли не совпадают');
+      toast({
+        title: "Ошибка",
+        description: "Пароли не совпадают",
+        variant: "destructive",
+      });
       return;
     }
+    
+    if (password.length < 8) {
+      setError('Пароль должен содержать минимум 8 символов');
+      toast({
+        title: "Ошибка",
+        description: "Пароль должен содержать минимум 8 символов",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setIsLoading(true);
-    // TODO: Implement actual signup
-    setTimeout(() => {
-      setIsLoading(false);
-    }, 1000);
+    const { error: signUpError } = await signUp(email, password, name);
+    setIsLoading(false);
+    
+    if (!signUpError) {
+      navigate('/dashboard');
+    }
   };
+
+  if (authLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-accent" />
+      </div>
+    );
+  }
 
   return (
     <Layout showFooter={false}>
@@ -115,6 +155,10 @@ export default function Signup() {
                 </div>
               </div>
 
+              {error && (
+                <p className="text-sm text-destructive">{error}</p>
+              )}
+              
               <Button
                 type="submit"
                 variant="accent"
@@ -122,8 +166,17 @@ export default function Signup() {
                 className="w-full"
                 disabled={isLoading}
               >
-                {isLoading ? 'Загрузка...' : 'Создать аккаунт'}
-                <ArrowRight className="ml-2 h-4 w-4" />
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Загрузка...
+                  </>
+                ) : (
+                  <>
+                    Создать аккаунт
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </>
+                )}
               </Button>
             </form>
 
