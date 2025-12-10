@@ -1,4 +1,5 @@
 import { Toaster } from "@/components/ui/toaster";
+import Testing58Viewer from "./pages/Testing58Viewer";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -65,6 +66,7 @@ const App = () => (
                   <Route path="/learning-plan" element={<ProtectedRoute><LearningPlanV2 /></ProtectedRoute>} />
                   <Route path="/ai-tutor" element={<ProtectedRoute><AISmartTutor /></ProtectedRoute>} />
                   <Route path="/homework" element={<ProtectedRoute><Homework /></ProtectedRoute>} />
+                  <Route path="/tests/testing58" element={<ProtectedRoute><Testing58Viewer /></ProtectedRoute>} />
                   
                   {/* Admin Routes */}
                   <Route path="/admin" element={<ProtectedAdminRoute><AdminLayout /></ProtectedAdminRoute>}>
