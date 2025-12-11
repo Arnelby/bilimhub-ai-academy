@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
+import { Textarea } from '@/components/ui/textarea';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { fractionsLessonData, getText, LearningStyle, MLPracticeQuestion, MultiLangText } from '@/data/fractionsLessonData';
 import { 
@@ -28,11 +29,14 @@ import {
   Ear,
   Puzzle,
   Zap,
-  ImageIcon
+  ImageIcon,
+  StickyNote,
+  Save
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Language } from '@/lib/i18n';
+import { toast } from 'sonner';
 
 type TabType = 'basic' | 'mini' | 'diagrams' | 'mistakes' | 'miniTests' | 'fullTest' | 'dynamic';
 
@@ -128,6 +132,11 @@ export default function FractionsLesson() {
   
   // Dynamic lesson state
   const [selectedStyle, setSelectedStyle] = useState<LearningStyle | null>(null);
+  
+  // Notes state
+  const [lessonNotes, setLessonNotes] = useState<string>(() => {
+    return localStorage.getItem('fractions_lesson_notes') || '';
+  });
 
   const t = {
     title: getText(data.title, language),
@@ -360,17 +369,13 @@ export default function FractionsLesson() {
                 <div className="flex items-center gap-3">
                   <PlayCircle className="h-6 w-6 text-primary" />
                   <h2 className="text-2xl font-bold">{t.tabs.mini}</h2>
-                  <Badge variant="secondary">{data.miniLessons.length} {language === 'ru' ? 'уроков' : language === 'kg' ? 'сабак' : 'lessons'}</Badge>
                 </div>
                 
-                {data.miniLessons.map((lesson, idx) => (
+                {data.miniLessons.map((lesson) => (
                   <Card key={lesson.id}>
                     <CardHeader>
                       <div className="flex items-start justify-between">
                         <CardTitle className="flex items-center gap-2">
-                          <span className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground text-sm font-bold">
-                            {idx + 1}
-                          </span>
                           {getText(lesson.title, language)}
                         </CardTitle>
                         <Badge variant="outline" className="flex items-center gap-1">
@@ -407,6 +412,46 @@ export default function FractionsLesson() {
                     </CardContent>
                   </Card>
                 ))}
+
+                {/* Notes Section */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <StickyNote className="h-5 w-5 text-primary" />
+                      {language === 'ru' ? 'Мои заметки' : language === 'kg' ? 'Менин жазууларым' : 'My Notes'}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <Textarea
+                      placeholder={
+                        language === 'ru' 
+                          ? 'Запишите важные моменты из видео здесь...' 
+                          : language === 'kg' 
+                          ? 'Видеодогу маанилүү жерлерди бул жерге жазыңыз...' 
+                          : 'Write down important points from the video here...'
+                      }
+                      value={lessonNotes}
+                      onChange={(e) => setLessonNotes(e.target.value)}
+                      className="min-h-[150px] resize-y"
+                    />
+                    <Button 
+                      onClick={() => {
+                        localStorage.setItem('fractions_lesson_notes', lessonNotes);
+                        toast.success(
+                          language === 'ru' 
+                            ? 'Заметки сохранены!' 
+                            : language === 'kg' 
+                            ? 'Жазуулар сакталды!' 
+                            : 'Notes saved!'
+                        );
+                      }}
+                      className="flex items-center gap-2"
+                    >
+                      <Save className="h-4 w-4" />
+                      {language === 'ru' ? 'Сохранить заметки' : language === 'kg' ? 'Жазууларды сактоо' : 'Save Notes'}
+                    </Button>
+                  </CardContent>
+                </Card>
               </TabsContent>
 
               {/* Diagrams Tab */}
