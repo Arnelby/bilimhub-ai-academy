@@ -5,11 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { fractionsLessonData, getText, LearningStyle } from '@/data/fractionsLessonData';
+import { fractionsLessonData, getText, LearningStyle, MLPracticeQuestion, MultiLangText } from '@/data/fractionsLessonData';
 import { 
   BookOpen, 
   PlayCircle, 
@@ -30,11 +28,11 @@ import {
   Ear,
   Puzzle,
   Zap,
-  Video,
   ImageIcon
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { Language } from '@/lib/i18n';
 
 type TabType = 'basic' | 'mini' | 'diagrams' | 'mistakes' | 'miniTests' | 'fullTest' | 'dynamic';
 
@@ -56,12 +54,64 @@ const styleIcons: Record<LearningStyle, React.ReactNode> = {
   'adhd-friendly': <Zap className="h-5 w-5" />,
 };
 
+// Practice Question Component
+function PracticeQuestion({ question, index, language }: { question: MLPracticeQuestion; index: number; language: Language }) {
+  const [selected, setSelected] = useState<number | null>(null);
+  const [showResult, setShowResult] = useState(false);
+
+  const handleCheck = () => {
+    if (selected !== null) setShowResult(true);
+  };
+
+  const isCorrect = selected === question.correctAnswer;
+
+  return (
+    <div className="p-4 border rounded-lg space-y-3">
+      <div className="flex items-center gap-2">
+        <Badge variant="outline">{index + 1}</Badge>
+        <p className="font-medium">{getText(question.question, language)}</p>
+      </div>
+      <div className="grid gap-2">
+        {question.options.map((opt, idx) => (
+          <Button
+            key={idx}
+            variant="outline"
+            className={cn(
+              'justify-start h-auto py-2 px-3',
+              selected === idx && !showResult && 'border-primary bg-primary/10',
+              showResult && idx === question.correctAnswer && 'border-green-500 bg-green-500/10',
+              showResult && selected === idx && idx !== question.correctAnswer && 'border-destructive bg-destructive/10'
+            )}
+            onClick={() => !showResult && setSelected(idx)}
+            disabled={showResult}
+          >
+            <span className="font-bold mr-2">{String.fromCharCode(65 + idx)}.</span>
+            {getText(opt, language)}
+          </Button>
+        ))}
+      </div>
+      {!showResult ? (
+        <Button onClick={handleCheck} disabled={selected === null} size="sm">
+          {language === 'ru' ? 'Проверить' : language === 'kg' ? 'Текшерүү' : 'Check'}
+        </Button>
+      ) : (
+        <div className={cn('p-3 rounded-lg flex items-start gap-2', isCorrect ? 'bg-green-500/10' : 'bg-destructive/10')}>
+          {isCorrect ? <CheckCircle className="h-5 w-5 text-green-500" /> : <XCircle className="h-5 w-5 text-destructive" />}
+          <div>
+            <p className="font-medium">{isCorrect ? (language === 'ru' ? 'Правильно!' : 'Correct!') : (language === 'ru' ? 'Неправильно' : 'Incorrect')}</p>
+            <p className="text-sm text-muted-foreground">{getText(question.explanation, language)}</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function FractionsLesson() {
   const { language, setLanguage } = useLanguage();
   const [activeTab, setActiveTab] = useState<TabType>('basic');
   
-  // Get fractions topic data
-  const fractionsTopic = mathTopics.find(t => t.id === 'fractions')!;
+  const data = fractionsLessonData;
   
   // Mini-tests state
   const [currentDifficulty, setCurrentDifficulty] = useState<1 | 2 | 3>(1);
@@ -80,14 +130,9 @@ export default function FractionsLesson() {
   const [selectedStyle, setSelectedStyle] = useState<LearningStyle | null>(null);
 
   const t = {
-    title: language === 'ru' ? 'Дроби' : language === 'kg' ? 'Бөлчөктөр' : 'Fractions',
-    subtitle: language === 'ru' 
-      ? 'Полный интерактивный урок' 
-      : language === 'kg' 
-        ? 'Толук интерактивдик сабак' 
-        : 'Complete Interactive Lesson',
+    title: getText(data.title, language),
+    subtitle: language === 'ru' ? 'Полный интерактивный урок' : language === 'kg' ? 'Толук интерактивдик сабак' : 'Complete Interactive Lesson',
     back: language === 'ru' ? 'Назад к урокам' : language === 'kg' ? 'Сабактарга кайтуу' : 'Back to Lessons',
-    contents: language === 'ru' ? 'Содержание' : language === 'kg' ? 'Мазмуну' : 'Contents',
     tabs: {
       basic: language === 'ru' ? 'Основной урок' : language === 'kg' ? 'Негизги сабак' : 'Basic Lesson',
       mini: language === 'ru' ? 'Мини-уроки' : language === 'kg' ? 'Мини-сабактар' : 'Mini Lessons',
@@ -100,15 +145,11 @@ export default function FractionsLesson() {
     theory: language === 'ru' ? 'Теория' : language === 'kg' ? 'Теория' : 'Theory',
     examples: language === 'ru' ? 'Примеры' : language === 'kg' ? 'Мисалдар' : 'Examples',
     practice: language === 'ru' ? 'Практика' : language === 'kg' ? 'Практика' : 'Practice',
-    checkAnswer: language === 'ru' ? 'Проверить' : language === 'kg' ? 'Текшерүү' : 'Check Answer',
-    correct: language === 'ru' ? 'Правильно!' : language === 'kg' ? 'Туура!' : 'Correct!',
-    incorrect: language === 'ru' ? 'Неправильно' : language === 'kg' ? 'Туура эмес' : 'Incorrect',
     next: language === 'ru' ? 'Далее' : language === 'kg' ? 'Кийинки' : 'Next',
     restart: language === 'ru' ? 'Начать заново' : language === 'kg' ? 'Кайра баштоо' : 'Restart',
     submit: language === 'ru' ? 'Завершить тест' : language === 'kg' ? 'Тестти бүтүрүү' : 'Submit Test',
     retake: language === 'ru' ? 'Пройти заново' : language === 'kg' ? 'Кайра өтүү' : 'Retake Test',
     score: language === 'ru' ? 'Ваш результат' : language === 'kg' ? 'Сиздин жыйынтык' : 'Your Score',
-    explanation: language === 'ru' ? 'Объяснение' : language === 'kg' ? 'Түшүндүрмө' : 'Explanation',
     selectStyle: language === 'ru' ? 'Выберите стиль обучения' : language === 'kg' ? 'Окуу стилин тандаңыз' : 'Select Your Learning Style',
     changeStyle: language === 'ru' ? 'Изменить стиль' : language === 'kg' ? 'Стилди өзгөртүү' : 'Change Style',
     difficulty: {
@@ -124,7 +165,7 @@ export default function FractionsLesson() {
       'adhd-friendly': language === 'ru' ? 'СДВГ-дружественный' : language === 'kg' ? 'ADHD-достук' : 'ADHD-friendly',
     },
     styleDescriptions: {
-      visual: language === 'ru' ? 'Обучение через изображения и диаграммы' : language === 'kg' ? 'Сүрөттөр аркылуу окуу' : 'Learning through images and diagrams',
+      visual: language === 'ru' ? 'Обучение через изображения' : language === 'kg' ? 'Сүрөттөр аркылуу окуу' : 'Learning through images',
       auditory: language === 'ru' ? 'Обучение через прослушивание' : language === 'kg' ? 'Угуу аркылуу окуу' : 'Learning through listening',
       'text-based': language === 'ru' ? 'Обучение через чтение' : language === 'kg' ? 'Окуу аркылуу үйрөнүү' : 'Learning through reading',
       'problem-solver': language === 'ru' ? 'Обучение через практику' : language === 'kg' ? 'Практика аркылуу окуу' : 'Learning through practice',
@@ -133,7 +174,7 @@ export default function FractionsLesson() {
   };
 
   // Mini-test logic
-  const filteredMiniTestQuestions = fractionsTopic.miniTestQuestions.filter(q => q.difficulty === currentDifficulty);
+  const filteredMiniTestQuestions = data.miniTestQuestions.filter(q => q.difficulty === currentDifficulty);
   const currentMiniTestQuestion = filteredMiniTestQuestions[miniTestIndex];
 
   const handleMiniTestAnswer = (answerIndex: number) => {
@@ -147,12 +188,10 @@ export default function FractionsLesson() {
     setMiniTestTotal(prev => prev + 1);
     if (miniTestAnswer === currentMiniTestQuestion.correctAnswer) {
       setMiniTestScore(prev => prev + 1);
-      // Increase difficulty on correct answer
       if (currentDifficulty < 3) {
         setCurrentDifficulty((prev) => Math.min(3, prev + 1) as 1 | 2 | 3);
       }
     } else {
-      // Decrease difficulty on wrong answer
       if (currentDifficulty > 1) {
         setCurrentDifficulty((prev) => Math.max(1, prev - 1) as 1 | 2 | 3);
       }
@@ -179,7 +218,7 @@ export default function FractionsLesson() {
   };
 
   // Full test logic
-  const currentFullTestQuestion = fractionsTopic.fullTestQuestions[fullTestIndex];
+  const currentFullTestQuestion = data.fullTestQuestions[fullTestIndex];
   const fullTestAnsweredCount = Object.keys(fullTestAnswers).length;
 
   const handleFullTestAnswer = (answerIndex: number) => {
@@ -188,7 +227,7 @@ export default function FractionsLesson() {
 
   const calculateFullTestScore = () => {
     let correct = 0;
-    fractionsTopic.fullTestQuestions.forEach((q, idx) => {
+    data.fullTestQuestions.forEach((q, idx) => {
       if (fullTestAnswers[idx] === q.correctAnswer) correct++;
     });
     return correct;
@@ -226,11 +265,12 @@ export default function FractionsLesson() {
                 <button
                   key={lang}
                   onClick={() => setLanguage(lang)}
-                  className={`px-3 py-1.5 text-sm font-medium transition-colors ${
+                  className={cn(
+                    'px-3 py-1.5 text-sm font-medium transition-colors',
                     language === lang 
                       ? 'bg-primary text-primary-foreground' 
                       : 'bg-background hover:bg-muted'
-                  }`}
+                  )}
                 >
                   {lang.toUpperCase()}
                 </button>
@@ -241,10 +281,9 @@ export default function FractionsLesson() {
 
         {/* Main Content */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Content Area (3/4) */}
+          {/* Content Area */}
           <div className="lg:col-span-3 order-2 lg:order-1">
             <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabType)}>
-              {/* Mobile Tab List */}
               <TabsList className="w-full flex-wrap h-auto gap-1 mb-6 lg:hidden">
                 {(Object.keys(tabIcons) as TabType[]).map((tab) => (
                   <TabsTrigger 
@@ -271,14 +310,14 @@ export default function FractionsLesson() {
                     <CardTitle className="flex items-center gap-2">📚 {t.theory}</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    {fractionsTopic.basicLesson.theory.map((section) => (
+                    {data.basicLesson.theory.map((section) => (
                       <div key={section.id} className="space-y-3">
-                        <h3 className="text-lg font-semibold">{section.title}</h3>
-                        <p className="text-muted-foreground whitespace-pre-wrap">{section.content}</p>
+                        <h3 className="text-lg font-semibold">{getText(section.title, language)}</h3>
+                        <p className="text-muted-foreground whitespace-pre-wrap">{getText(section.content, language)}</p>
                         {section.imagePlaceholder && (
                           <div className="bg-muted/50 border-2 border-dashed border-muted-foreground/30 rounded-lg p-8 text-center">
                             <ImageIcon className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                            <p className="text-sm text-muted-foreground">{section.imagePlaceholder}</p>
+                            <p className="text-sm text-muted-foreground">{getText(section.imagePlaceholder, language)}</p>
                           </div>
                         )}
                         <Separator />
@@ -293,17 +332,11 @@ export default function FractionsLesson() {
                     <CardTitle className="flex items-center gap-2">💡 {t.examples}</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    {fractionsTopic.basicLesson.examples.map((example, idx) => (
+                    {data.basicLesson.examples.map((example, idx) => (
                       <div key={example.id} className="p-4 border rounded-lg space-y-3">
                         <Badge variant="outline">{t.examples} {idx + 1}</Badge>
-                        <h4 className="font-semibold">{example.title}</h4>
-                        <p className="text-muted-foreground whitespace-pre-wrap">{example.content}</p>
-                        {example.imagePlaceholder && (
-                          <div className="bg-muted/50 border-2 border-dashed border-muted-foreground/30 rounded-lg p-6 text-center">
-                            <ImageIcon className="h-6 w-6 mx-auto text-muted-foreground mb-2" />
-                            <p className="text-xs text-muted-foreground">{example.imagePlaceholder}</p>
-                          </div>
-                        )}
+                        <h4 className="font-semibold">{getText(example.title, language)}</h4>
+                        <p className="text-muted-foreground whitespace-pre-wrap">{getText(example.content, language)}</p>
                       </div>
                     ))}
                   </CardContent>
@@ -315,8 +348,8 @@ export default function FractionsLesson() {
                     <CardTitle className="flex items-center gap-2">✏️ {t.practice}</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {fractionsTopic.basicLesson.practiceQuestions.slice(0, 5).map((q, idx) => (
-                      <PracticeQuestion key={q.id} question={q} index={idx} t={t} />
+                    {data.basicLesson.practiceQuestions.slice(0, 5).map((q, idx) => (
+                      <PracticeQuestion key={q.id} question={q} index={idx} language={language} />
                     ))}
                   </CardContent>
                 </Card>
@@ -327,10 +360,10 @@ export default function FractionsLesson() {
                 <div className="flex items-center gap-3">
                   <PlayCircle className="h-6 w-6 text-primary" />
                   <h2 className="text-2xl font-bold">{t.tabs.mini}</h2>
-                  <Badge variant="secondary">{fractionsTopic.miniLessons.length} {language === 'ru' ? 'уроков' : 'lessons'}</Badge>
+                  <Badge variant="secondary">{data.miniLessons.length} {language === 'ru' ? 'уроков' : language === 'kg' ? 'сабак' : 'lessons'}</Badge>
                 </div>
                 
-                {fractionsTopic.miniLessons.map((lesson, idx) => (
+                {data.miniLessons.map((lesson, idx) => (
                   <Card key={lesson.id}>
                     <CardHeader>
                       <div className="flex items-start justify-between">
@@ -338,7 +371,7 @@ export default function FractionsLesson() {
                           <span className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground text-sm font-bold">
                             {idx + 1}
                           </span>
-                          {lesson.title}
+                          {getText(lesson.title, language)}
                         </CardTitle>
                         <Badge variant="outline" className="flex items-center gap-1">
                           <Clock className="h-3 w-3" />
@@ -348,16 +381,16 @@ export default function FractionsLesson() {
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <div className="p-3 bg-muted/50 rounded-lg">
-                        <p className="text-sm text-muted-foreground">{lesson.concept}</p>
+                        <p className="text-sm text-muted-foreground">{getText(lesson.concept, language)}</p>
                       </div>
-                      <p className="text-muted-foreground">{lesson.explanation}</p>
+                      <p className="text-muted-foreground whitespace-pre-wrap">{getText(lesson.explanation, language)}</p>
                       
                       {/* YouTube Video */}
                       <div className="aspect-video rounded-lg overflow-hidden">
                         <iframe
                           className="w-full h-full"
-                          src="https://www.youtube.com/embed/UJbYTA-1rYc"
-                          title={lesson.title}
+                          src={lesson.videoUrl}
+                          title={getText(lesson.title, language)}
                           frameBorder="0"
                           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                           allowFullScreen
@@ -367,8 +400,8 @@ export default function FractionsLesson() {
                       <div className="flex items-start gap-3 p-4 rounded-lg bg-warning/10 border border-warning/30">
                         <Lightbulb className="h-5 w-5 text-warning mt-0.5" />
                         <div>
-                          <p className="font-medium text-sm text-warning">{language === 'ru' ? 'Главное' : 'Key Takeaway'}</p>
-                          <p className="text-sm mt-1">{lesson.keyTakeaway}</p>
+                          <p className="font-medium text-sm text-warning">{language === 'ru' ? 'Главное' : language === 'kg' ? 'Негизгиси' : 'Key Takeaway'}</p>
+                          <p className="text-sm text-foreground mt-1">{getText(lesson.keyTakeaway, language)}</p>
                         </div>
                       </div>
                     </CardContent>
@@ -381,22 +414,20 @@ export default function FractionsLesson() {
                 <div className="flex items-center gap-3">
                   <LayoutGrid className="h-6 w-6 text-primary" />
                   <h2 className="text-2xl font-bold">{t.tabs.diagrams}</h2>
-                  <Badge variant="secondary">{fractionsTopic.diagrams.length}</Badge>
                 </div>
                 
-                <div className="grid gap-6 md:grid-cols-2">
-                  {fractionsTopic.diagrams.map((diagram) => (
-                    <Card key={diagram.id} className="overflow-hidden">
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-lg flex items-center gap-2">
-                          📊 {diagram.title}
-                        </CardTitle>
+                <div className="grid gap-4 md:grid-cols-2">
+                  {data.diagrams.map((diagram) => (
+                    <Card key={diagram.id}>
+                      <CardHeader>
+                        <CardTitle className="text-lg">{getText(diagram.title, language)}</CardTitle>
+                        <Badge variant="outline">{diagram.type}</Badge>
                       </CardHeader>
-                      <CardContent className="space-y-4">
-                        <p className="text-sm text-muted-foreground">{diagram.description}</p>
-                        <div className="bg-muted/50 border-2 border-dashed border-muted-foreground/30 rounded-lg p-12 text-center">
-                          <ImageIcon className="h-16 w-16 mx-auto text-muted-foreground mb-3" />
-                          <p className="text-sm text-muted-foreground">{diagram.imagePlaceholder}</p>
+                      <CardContent>
+                        <p className="text-muted-foreground mb-4">{getText(diagram.description, language)}</p>
+                        <div className="bg-muted/50 border-2 border-dashed border-muted-foreground/30 rounded-lg p-8 text-center">
+                          <ImageIcon className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
+                          <p className="text-sm text-muted-foreground">{getText(diagram.imagePlaceholder, language)}</p>
                         </div>
                       </CardContent>
                     </Card>
@@ -407,146 +438,118 @@ export default function FractionsLesson() {
               {/* Common Mistakes Tab */}
               <TabsContent value="mistakes" className="mt-0 space-y-6">
                 <div className="flex items-center gap-3">
-                  <AlertTriangle className="h-6 w-6 text-warning" />
+                  <AlertTriangle className="h-6 w-6 text-primary" />
                   <h2 className="text-2xl font-bold">{t.tabs.mistakes}</h2>
-                  <Badge variant="secondary">{fractionsTopic.commonMistakes.length}</Badge>
                 </div>
                 
-                {fractionsTopic.commonMistakes.map((item, idx) => (
-                  <Card key={item.id}>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <XCircle className="h-5 w-5 text-destructive" />
-                        {language === 'ru' ? 'Ошибка' : 'Mistake'} #{idx + 1}
+                {data.commonMistakes.map((mistake, idx) => (
+                  <Card key={mistake.id} className="border-l-4 border-l-destructive">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-destructive">
+                        <XCircle className="h-5 w-5" />
+                        {language === 'ru' ? 'Ошибка' : language === 'kg' ? 'Ката' : 'Mistake'} {idx + 1}: {getText(mistake.mistake, language)}
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
-                        <p className="font-medium text-destructive">{item.mistake}</p>
+                      <div className="p-3 bg-destructive/10 rounded-lg">
+                        <p className="text-sm">{getText(mistake.explanation, language)}</p>
                       </div>
-                      <div className="p-4 bg-warning/10 border border-warning/20 rounded-lg">
-                        <p className="font-medium text-warning mb-2">{language === 'ru' ? 'Почему это неправильно:' : 'Why it\'s wrong:'}</p>
-                        <p>{item.explanation}</p>
-                      </div>
-                      <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg">
-                        <p className="font-medium text-primary mb-2">{language === 'ru' ? 'Как исправить:' : 'How to fix:'}</p>
+                      <div className="p-3 bg-green-500/10 rounded-lg">
+                        <p className="font-medium text-green-600 mb-2">{language === 'ru' ? 'Как исправить:' : language === 'kg' ? 'Кантип оңдоо керек:' : 'How to fix:'}</p>
                         <ul className="list-disc list-inside space-y-1">
-                          {item.fix.map((step, i) => (
-                            <li key={i}>{step}</li>
+                          {mistake.fix.map((fix, i) => (
+                            <li key={i} className="text-sm">{getText(fix, language)}</li>
                           ))}
                         </ul>
                       </div>
-                      {item.imagePlaceholder && (
-                        <div className="bg-muted/50 border-2 border-dashed border-muted-foreground/30 rounded-lg p-6 text-center">
-                          <ImageIcon className="h-6 w-6 mx-auto text-muted-foreground mb-2" />
-                          <p className="text-xs text-muted-foreground">{item.imagePlaceholder}</p>
-                        </div>
-                      )}
                     </CardContent>
                   </Card>
                 ))}
               </TabsContent>
 
-              {/* Mini Tests Tab */}
+              {/* Mini-Tests Tab */}
               <TabsContent value="miniTests" className="mt-0 space-y-6">
                 <div className="flex items-center justify-between flex-wrap gap-4">
                   <div className="flex items-center gap-3">
                     <Brain className="h-6 w-6 text-primary" />
                     <h2 className="text-2xl font-bold">{t.tabs.miniTests}</h2>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <Badge variant="outline">{t.score}: {miniTestScore}/{miniTestTotal}</Badge>
-                    <Badge variant={currentDifficulty === 1 ? 'secondary' : currentDifficulty === 2 ? 'default' : 'destructive'}>
-                      {t.difficulty[currentDifficulty]}
-                    </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={currentDifficulty === 1 ? 'default' : 'outline'}>{t.difficulty[1]}</Badge>
+                    <Badge variant={currentDifficulty === 2 ? 'default' : 'outline'}>{t.difficulty[2]}</Badge>
+                    <Badge variant={currentDifficulty === 3 ? 'default' : 'outline'}>{t.difficulty[3]}</Badge>
                   </div>
                 </div>
 
-                {miniTestTotal > 0 && <Progress value={(miniTestScore / miniTestTotal) * 100} />}
-
-                {currentMiniTestQuestion ? (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>{language === 'ru' ? 'Вопрос' : 'Question'} {miniTestTotal + 1}</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <p className="text-lg">{currentMiniTestQuestion.question}</p>
-
-                      <div className="grid gap-3">
-                        {currentMiniTestQuestion.options.map((option, idx) => {
-                          const isSelected = miniTestAnswer === idx;
-                          const isCorrect = currentMiniTestQuestion.correctAnswer === idx;
-                          
-                          return (
+                <Card>
+                  <CardHeader>
+                    <div className="flex justify-between items-center">
+                      <CardTitle>{language === 'ru' ? 'Уровень' : 'Level'}: {t.difficulty[currentDifficulty]}</CardTitle>
+                      <Badge>{language === 'ru' ? 'Счёт' : 'Score'}: {miniTestScore}/{miniTestTotal}</Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {currentMiniTestQuestion ? (
+                      <>
+                        <p className="text-lg font-medium">{getText(currentMiniTestQuestion.question, language)}</p>
+                        <div className="grid gap-3">
+                          {currentMiniTestQuestion.options.map((opt, idx) => (
                             <Button
                               key={idx}
                               variant="outline"
                               className={cn(
-                                'justify-start h-auto py-3 px-4 text-left',
-                                isSelected && !miniTestShowResult && 'border-primary bg-primary/10',
-                                miniTestShowResult && isCorrect && 'border-green-500 bg-green-500/10 text-green-700',
-                                miniTestShowResult && isSelected && !isCorrect && 'border-destructive bg-destructive/10 text-destructive'
+                                'justify-start h-auto py-3 px-4',
+                                miniTestAnswer === idx && !miniTestShowResult && 'border-primary bg-primary/10',
+                                miniTestShowResult && idx === currentMiniTestQuestion.correctAnswer && 'border-green-500 bg-green-500/10',
+                                miniTestShowResult && miniTestAnswer === idx && idx !== currentMiniTestQuestion.correctAnswer && 'border-destructive bg-destructive/10'
                               )}
                               onClick={() => handleMiniTestAnswer(idx)}
                               disabled={miniTestShowResult}
                             >
                               <span className="font-bold mr-3">{String.fromCharCode(65 + idx)}.</span>
-                              {option}
-                              {miniTestShowResult && isCorrect && <CheckCircle className="ml-auto h-5 w-5 text-green-500" />}
-                              {miniTestShowResult && isSelected && !isCorrect && <XCircle className="ml-auto h-5 w-5 text-destructive" />}
+                              {getText(opt, language)}
                             </Button>
-                          );
-                        })}
-                      </div>
+                          ))}
+                        </div>
 
-                      {!miniTestShowResult && miniTestAnswer !== null && (
-                        <Button onClick={checkMiniTestAnswer} className="w-full">
-                          {t.checkAnswer}
-                        </Button>
-                      )}
-
-                      {miniTestShowResult && (
-                        <div className="space-y-4">
-                          <div className={cn(
-                            'p-4 rounded-lg',
-                            miniTestAnswer === currentMiniTestQuestion.correctAnswer ? 'bg-green-500/10 border border-green-500/20' : 'bg-destructive/10 border border-destructive/20'
-                          )}>
-                            <p className={cn(
-                              'font-semibold flex items-center gap-2',
-                              miniTestAnswer === currentMiniTestQuestion.correctAnswer ? 'text-green-600' : 'text-destructive'
-                            )}>
+                        {miniTestShowResult && (
+                          <div className={cn('p-4 rounded-lg', miniTestAnswer === currentMiniTestQuestion.correctAnswer ? 'bg-green-500/10' : 'bg-destructive/10')}>
+                            <div className="flex items-center gap-2 mb-2">
                               {miniTestAnswer === currentMiniTestQuestion.correctAnswer ? (
-                                <><CheckCircle className="h-5 w-5" /> {t.correct}</>
+                                <CheckCircle className="h-5 w-5 text-green-500" />
                               ) : (
-                                <><XCircle className="h-5 w-5" /> {t.incorrect}</>
+                                <XCircle className="h-5 w-5 text-destructive" />
                               )}
-                            </p>
+                              <span className="font-medium">
+                                {miniTestAnswer === currentMiniTestQuestion.correctAnswer 
+                                  ? (language === 'ru' ? 'Правильно!' : 'Correct!') 
+                                  : (language === 'ru' ? 'Неправильно' : 'Incorrect')}
+                              </span>
+                            </div>
+                            <p className="text-sm text-muted-foreground">{getText(currentMiniTestQuestion.explanation, language)}</p>
                           </div>
+                        )}
 
-                          <div className="p-4 bg-muted/50 rounded-lg">
-                            <p className="font-medium text-muted-foreground mb-2">{t.explanation}:</p>
-                            <p>{currentMiniTestQuestion.explanation}</p>
-                          </div>
-
-                          <Button onClick={nextMiniTestQuestion} className="w-full">
-                            {t.next}
-                            <ArrowRight className="ml-2 h-4 w-4" />
+                        <div className="flex gap-3">
+                          {!miniTestShowResult ? (
+                            <Button onClick={checkMiniTestAnswer} disabled={miniTestAnswer === null}>
+                              {language === 'ru' ? 'Проверить' : 'Check'}
+                            </Button>
+                          ) : (
+                            <Button onClick={nextMiniTestQuestion}>
+                              {t.next} <ArrowRight className="ml-2 h-4 w-4" />
+                            </Button>
+                          )}
+                          <Button variant="outline" onClick={restartMiniTest}>
+                            <RotateCcw className="mr-2 h-4 w-4" /> {t.restart}
                           </Button>
                         </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <Card className="text-center">
-                    <CardContent className="pt-8 pb-8">
-                      <p className="mb-4">{language === 'ru' ? 'Нет вопросов для этого уровня сложности' : 'No questions for this difficulty'}</p>
-                      <Button onClick={restartMiniTest}>
-                        <RotateCcw className="mr-2 h-4 w-4" />
-                        {t.restart}
-                      </Button>
-                    </CardContent>
-                  </Card>
-                )}
+                      </>
+                    ) : (
+                      <p className="text-muted-foreground">{language === 'ru' ? 'Нет вопросов для этого уровня' : 'No questions for this level'}</p>
+                    )}
+                  </CardContent>
+                </Card>
               </TabsContent>
 
               {/* Full Test Tab */}
@@ -557,17 +560,16 @@ export default function FractionsLesson() {
                     <h2 className="text-2xl font-bold">{t.tabs.fullTest}</h2>
                   </div>
                   <Badge variant="outline">
-                    {language === 'ru' ? 'Отвечено' : 'Answered'}: {fullTestAnsweredCount}/{fractionsTopic.fullTestQuestions.length}
+                    {language === 'ru' ? 'Отвечено' : 'Answered'}: {fullTestAnsweredCount}/{data.fullTestQuestions.length}
                   </Badge>
                 </div>
 
-                <Progress value={(fullTestAnsweredCount / fractionsTopic.fullTestQuestions.length) * 100} />
+                <Progress value={(fullTestAnsweredCount / data.fullTestQuestions.length) * 100} />
 
                 {!fullTestSubmitted ? (
                   <>
-                    {/* Question navigator */}
                     <div className="flex flex-wrap gap-2">
-                      {fractionsTopic.fullTestQuestions.map((_, idx) => (
+                      {data.fullTestQuestions.map((_, idx) => (
                         <Button
                           key={idx}
                           variant={fullTestIndex === idx ? 'default' : fullTestAnswers[idx] !== undefined ? 'secondary' : 'outline'}
@@ -582,10 +584,10 @@ export default function FractionsLesson() {
 
                     <Card>
                       <CardHeader>
-                        <CardTitle>{language === 'ru' ? 'Вопрос' : 'Question'} {fullTestIndex + 1} {language === 'ru' ? 'из' : 'of'} {fractionsTopic.fullTestQuestions.length}</CardTitle>
+                        <CardTitle>{language === 'ru' ? 'Вопрос' : 'Question'} {fullTestIndex + 1} {language === 'ru' ? 'из' : 'of'} {data.fullTestQuestions.length}</CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-4">
-                        <p className="text-lg">{currentFullTestQuestion.question}</p>
+                        <p className="text-lg">{getText(currentFullTestQuestion.question, language)}</p>
 
                         <div className="grid gap-3">
                           {currentFullTestQuestion.options.map((option, idx) => (
@@ -599,7 +601,7 @@ export default function FractionsLesson() {
                               onClick={() => handleFullTestAnswer(idx)}
                             >
                               <span className="font-bold mr-3">{String.fromCharCode(65 + idx)}.</span>
-                              {option}
+                              {getText(option, language)}
                             </Button>
                           ))}
                         </div>
@@ -614,10 +616,10 @@ export default function FractionsLesson() {
                             {language === 'ru' ? 'Назад' : 'Previous'}
                           </Button>
 
-                          {fullTestIndex === fractionsTopic.fullTestQuestions.length - 1 ? (
+                          {fullTestIndex === data.fullTestQuestions.length - 1 ? (
                             <Button 
                               onClick={() => setFullTestSubmitted(true)}
-                              disabled={fullTestAnsweredCount < fractionsTopic.fullTestQuestions.length}
+                              disabled={fullTestAnsweredCount < data.fullTestQuestions.length}
                             >
                               {t.submit}
                             </Button>
@@ -635,13 +637,13 @@ export default function FractionsLesson() {
                   <div className="space-y-6">
                     <Card className="text-center">
                       <CardContent className="pt-8 pb-8">
-                        <div className="text-6xl mb-4">{calculateFullTestScore() / fractionsTopic.fullTestQuestions.length >= 0.7 ? '🎉' : '📚'}</div>
+                        <div className="text-6xl mb-4">{calculateFullTestScore() / data.fullTestQuestions.length >= 0.7 ? '🎉' : '📚'}</div>
                         <p className="text-lg text-muted-foreground mb-2">{t.score}:</p>
                         <div className="text-4xl font-bold text-primary mb-2">
-                          {calculateFullTestScore()}/{fractionsTopic.fullTestQuestions.length}
+                          {calculateFullTestScore()}/{data.fullTestQuestions.length}
                         </div>
-                        <Progress value={(calculateFullTestScore() / fractionsTopic.fullTestQuestions.length) * 100} className="w-64 mx-auto mb-4" />
-                        <p className="text-xl mb-6">{Math.round((calculateFullTestScore() / fractionsTopic.fullTestQuestions.length) * 100)}%</p>
+                        <Progress value={(calculateFullTestScore() / data.fullTestQuestions.length) * 100} className="w-64 mx-auto mb-4" />
+                        <p className="text-xl mb-6">{Math.round((calculateFullTestScore() / data.fullTestQuestions.length) * 100)}%</p>
                         <Button onClick={restartFullTest} size="lg">
                           <RotateCcw className="mr-2 h-4 w-4" />
                           {t.retake}
@@ -649,9 +651,8 @@ export default function FractionsLesson() {
                       </CardContent>
                     </Card>
 
-                    {/* Review answers */}
                     <h3 className="text-xl font-semibold">{language === 'ru' ? 'Разбор ответов' : 'Answer Review'}</h3>
-                    {fractionsTopic.fullTestQuestions.map((q, idx) => {
+                    {data.fullTestQuestions.map((q, idx) => {
                       const userAnswer = fullTestAnswers[idx];
                       const isCorrect = userAnswer === q.correctAnswer;
                       
@@ -659,25 +660,18 @@ export default function FractionsLesson() {
                         <Card key={q.id} className={cn('border-l-4', isCorrect ? 'border-l-green-500' : 'border-l-destructive')}>
                           <CardContent className="pt-4">
                             <div className="flex items-start gap-3 mb-3">
-                              {isCorrect ? (
-                                <CheckCircle className="h-5 w-5 text-green-500 mt-1 shrink-0" />
-                              ) : (
-                                <XCircle className="h-5 w-5 text-destructive mt-1 shrink-0" />
-                              )}
-                              <div className="flex-1">
-                                <p className="font-medium mb-2">{language === 'ru' ? 'Вопрос' : 'Question'} {idx + 1}: {q.question}</p>
-                                <div className="text-sm space-y-1">
-                                  <p className={isCorrect ? 'text-green-600' : 'text-destructive'}>
-                                    {language === 'ru' ? 'Ваш ответ' : 'Your answer'}: {userAnswer !== undefined ? String.fromCharCode(65 + userAnswer) : '-'}
+                              {isCorrect ? <CheckCircle className="h-5 w-5 text-green-500" /> : <XCircle className="h-5 w-5 text-destructive" />}
+                              <div>
+                                <p className="font-medium">{getText(q.question, language)}</p>
+                                <p className="text-sm text-muted-foreground mt-1">
+                                  {language === 'ru' ? 'Ваш ответ' : 'Your answer'}: {String.fromCharCode(65 + userAnswer)}. {getText(q.options[userAnswer], language)}
+                                </p>
+                                {!isCorrect && (
+                                  <p className="text-sm text-green-600 mt-1">
+                                    {language === 'ru' ? 'Правильный ответ' : 'Correct'}: {String.fromCharCode(65 + q.correctAnswer)}. {getText(q.options[q.correctAnswer], language)}
                                   </p>
-                                  {!isCorrect && (
-                                    <p className="text-green-600">{language === 'ru' ? 'Правильный ответ' : 'Correct answer'}: {String.fromCharCode(65 + q.correctAnswer)}</p>
-                                  )}
-                                </div>
-                                <div className="mt-3 p-3 bg-muted/50 rounded text-sm">
-                                  <p className="font-medium text-muted-foreground">{t.explanation}:</p>
-                                  <p>{q.explanation}</p>
-                                </div>
+                                )}
+                                <p className="text-sm text-muted-foreground mt-2">{getText(q.explanation, language)}</p>
                               </div>
                             </div>
                           </CardContent>
@@ -688,134 +682,92 @@ export default function FractionsLesson() {
                 )}
               </TabsContent>
 
-              {/* Dynamic Lessons Tab */}
+              {/* Dynamic AI Lesson Tab */}
               <TabsContent value="dynamic" className="mt-0 space-y-6">
                 <div className="flex items-center gap-3">
                   <Sparkles className="h-6 w-6 text-primary" />
                   <h2 className="text-2xl font-bold">{t.tabs.dynamic}</h2>
-                  <Badge variant="secondary" className="bg-gradient-to-r from-primary/20 to-purple-500/20">
-                    AI Personalized
-                  </Badge>
                 </div>
 
                 {!selectedStyle ? (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>{t.selectStyle}</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <RadioGroup
-                        onValueChange={(value) => setSelectedStyle(value as LearningStyle)}
-                        className="grid gap-4 md:grid-cols-2 lg:grid-cols-3"
-                      >
-                        {(['visual', 'auditory', 'text-based', 'problem-solver', 'adhd-friendly'] as LearningStyle[]).map((style) => (
-                          <div key={style}>
-                            <RadioGroupItem value={style} id={style} className="peer sr-only" />
-                            <Label
-                              htmlFor={style}
-                              className="flex flex-col items-center justify-center rounded-lg border-2 border-muted bg-card p-6 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary cursor-pointer transition-all"
-                            >
-                              <div className="mb-3 p-3 rounded-full bg-primary/10 text-primary">
-                                {styleIcons[style]}
-                              </div>
-                              <span className="text-lg font-semibold mb-2">{t.styleNames[style]}</span>
-                              <span className="text-sm text-muted-foreground text-center">
-                                {t.styleDescriptions[style]}
-                              </span>
-                            </Label>
-                          </div>
-                        ))}
-                      </RadioGroup>
-                    </CardContent>
-                  </Card>
+                  <div className="space-y-4">
+                    <p className="text-muted-foreground">{t.selectStyle}</p>
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                      {(Object.keys(styleIcons) as LearningStyle[]).map((style) => (
+                        <Card 
+                          key={style} 
+                          className="cursor-pointer hover:border-primary transition-colors"
+                          onClick={() => setSelectedStyle(style)}
+                        >
+                          <CardContent className="pt-6 text-center">
+                            <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                              {styleIcons[style]}
+                            </div>
+                            <h3 className="font-semibold mb-1">{t.styleNames[style]}</h3>
+                            <p className="text-sm text-muted-foreground">{t.styleDescriptions[style]}</p>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
                 ) : (
                   <div className="space-y-6">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        {styleIcons[selectedStyle]}
+                        <h3 className="text-xl font-semibold">{t.styleNames[selectedStyle]}</h3>
+                      </div>
+                      <Button variant="outline" onClick={() => setSelectedStyle(null)}>
+                        {t.changeStyle}
+                      </Button>
+                    </div>
+
                     {(() => {
-                      const dynamicContent = fractionsTopic.dynamicLessonContents.find(d => d.learningStyle === selectedStyle);
-                      if (!dynamicContent) return null;
+                      const lesson = data.dynamicLessons.find(l => l.learningStyle === selectedStyle);
+                      if (!lesson) return null;
                       
                       return (
-                        <>
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <div className="p-2 rounded-full bg-primary/10 text-primary">
-                                {styleIcons[selectedStyle]}
-                              </div>
-                              <div>
-                                <h3 className="font-semibold">{dynamicContent.title}</h3>
-                                <p className="text-sm text-muted-foreground">{t.styleNames[selectedStyle]}</p>
-                              </div>
+                        <Card>
+                          <CardHeader>
+                            <CardTitle>{getText(lesson.title, language)}</CardTitle>
+                            <p className="text-sm text-muted-foreground">{getText(lesson.approach, language)}</p>
+                          </CardHeader>
+                          <CardContent className="space-y-6">
+                            <div className="p-4 bg-primary/5 rounded-lg">
+                              <p>{getText(lesson.introduction, language)}</p>
                             </div>
-                            <Button variant="outline" onClick={() => setSelectedStyle(null)}>
-                              {t.changeStyle}
-                            </Button>
-                          </div>
 
-                          <Card>
-                            <CardHeader>
-                              <CardTitle>{language === 'ru' ? 'Подход' : 'Approach'}</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                              <p className="text-muted-foreground">{dynamicContent.approach}</p>
-                            </CardContent>
-                          </Card>
-
-                          <Card>
-                            <CardHeader>
-                              <CardTitle>{language === 'ru' ? 'Введение' : 'Introduction'}</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                              <p className="text-lg leading-relaxed">{dynamicContent.introduction}</p>
-                            </CardContent>
-                          </Card>
-
-                          <Card>
-                            <CardHeader>
-                              <CardTitle>{language === 'ru' ? 'Основное содержание' : 'Main Content'}</CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                              {dynamicContent.mainContent.map((content, idx) => (
-                                <p key={idx} className="text-muted-foreground whitespace-pre-wrap">{content}</p>
+                            <div className="space-y-4">
+                              <h4 className="font-semibold">{language === 'ru' ? 'Содержание' : 'Content'}</h4>
+                              {lesson.mainContent.map((content, idx) => (
+                                <p key={idx} className="text-muted-foreground whitespace-pre-wrap">{getText(content, language)}</p>
                               ))}
-                            </CardContent>
-                          </Card>
+                            </div>
 
-                          <Card>
-                            <CardHeader>
-                              <CardTitle>{t.examples}</CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                              {dynamicContent.examples.map((example, idx) => (
-                                <div key={idx} className="p-4 bg-muted/50 rounded-lg">
-                                  <Badge variant="outline" className="mb-2">{t.examples} {idx + 1}</Badge>
-                                  <p className="whitespace-pre-wrap">{example}</p>
+                            <div className="space-y-3">
+                              <h4 className="font-semibold">{language === 'ru' ? 'Примеры' : 'Examples'}</h4>
+                              {lesson.examples.map((example, idx) => (
+                                <div key={idx} className="p-3 border rounded-lg">
+                                  <p className="text-sm">{getText(example, language)}</p>
                                 </div>
                               ))}
-                            </CardContent>
-                          </Card>
+                            </div>
 
-                          <Card>
-                            <CardHeader>
-                              <CardTitle>{language === 'ru' ? 'Резюме' : 'Summary'}</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                              <p className="text-lg">{dynamicContent.summary}</p>
-                            </CardContent>
-                          </Card>
+                            <div className="p-4 bg-muted/50 rounded-lg">
+                              <h4 className="font-semibold mb-2">{language === 'ru' ? 'Итог' : 'Summary'}</h4>
+                              <p>{getText(lesson.summary, language)}</p>
+                            </div>
 
-                          <Card>
-                            <CardHeader>
-                              <CardTitle>{language === 'ru' ? 'Советы' : 'Tips'}</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                              <ul className="list-disc list-inside space-y-2">
-                                {dynamicContent.tips.map((tip, idx) => (
-                                  <li key={idx} className="text-muted-foreground">{tip}</li>
+                            <div>
+                              <h4 className="font-semibold mb-2">{language === 'ru' ? 'Советы' : 'Tips'}</h4>
+                              <ul className="list-disc list-inside space-y-1">
+                                {lesson.tips.map((tip, idx) => (
+                                  <li key={idx} className="text-sm text-muted-foreground">{getText(tip, language)}</li>
                                 ))}
                               </ul>
-                            </CardContent>
-                          </Card>
-                        </>
+                            </div>
+                          </CardContent>
+                        </Card>
                       );
                     })()}
                   </div>
@@ -824,106 +776,29 @@ export default function FractionsLesson() {
             </Tabs>
           </div>
 
-          {/* Sidebar Navigation (1/4) */}
+          {/* Sidebar */}
           <div className="lg:col-span-1 order-1 lg:order-2">
-            <div className="sticky top-4">
-              <Card className="hidden lg:block">
-                <CardContent className="p-4">
-                  <h3 className="font-semibold text-lg mb-4 text-card-foreground">{t.contents}</h3>
-                  <nav className="space-y-1">
-                    {(Object.keys(tabIcons) as TabType[]).map((tab) => (
-                      <button
-                        key={tab}
-                        onClick={() => setActiveTab(tab)}
-                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-left transition-all ${
-                          activeTab === tab
-                            ? 'bg-primary text-primary-foreground'
-                            : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
-                        }`}
-                      >
-                        {tabIcons[tab]}
-                        <span className="text-sm font-medium">{t.tabs[tab]}</span>
-                      </button>
-                    ))}
-                  </nav>
-                </CardContent>
-              </Card>
-
-              <Card className="mt-4">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="text-2xl">📐</span>
-                    <h4 className="font-semibold">{t.title}</h4>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    {language === 'ru' 
-                      ? 'Изучите дроби через теорию, примеры, диаграммы и интерактивные тесты.'
-                      : language === 'kg'
-                        ? 'Бөлчөктөрдү теория, мисалдар, диаграммалар жана интерактивдик тесттер аркылуу үйрөнүңүз.'
-                        : 'Learn fractions through theory, examples, diagrams, and interactive tests.'}
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
+            <Card className="sticky top-4">
+              <CardHeader>
+                <CardTitle className="text-lg">{language === 'ru' ? 'Содержание' : 'Contents'}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {(Object.keys(tabIcons) as TabType[]).map((tab) => (
+                  <Button
+                    key={tab}
+                    variant={activeTab === tab ? 'default' : 'ghost'}
+                    className="w-full justify-start gap-2"
+                    onClick={() => setActiveTab(tab)}
+                  >
+                    {tabIcons[tab]}
+                    {t.tabs[tab]}
+                  </Button>
+                ))}
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>
     </Layout>
-  );
-}
-
-// Practice Question Component
-function PracticeQuestion({ question, index, t }: { 
-  question: { id: string; question: string; options: string[]; correctAnswer: number; explanation: string };
-  index: number;
-  t: any;
-}) {
-  const [answer, setAnswer] = useState<number | null>(null);
-  const [showResult, setShowResult] = useState(false);
-
-  const handleCheck = () => {
-    if (answer !== null) setShowResult(true);
-  };
-
-  const isCorrect = answer === question.correctAnswer;
-
-  return (
-    <div className="p-4 border rounded-lg space-y-3">
-      <Badge variant="outline">{t.practice} {index + 1}</Badge>
-      <p className="font-medium">{question.question}</p>
-      
-      <div className="grid gap-2">
-        {question.options.map((option, idx) => (
-          <Button
-            key={idx}
-            variant="outline"
-            size="sm"
-            className={cn(
-              'justify-start',
-              answer === idx && !showResult && 'border-primary bg-primary/10',
-              showResult && idx === question.correctAnswer && 'border-green-500 bg-green-500/10',
-              showResult && answer === idx && idx !== question.correctAnswer && 'border-destructive bg-destructive/10'
-            )}
-            onClick={() => !showResult && setAnswer(idx)}
-            disabled={showResult}
-          >
-            {String.fromCharCode(65 + idx)}. {option}
-          </Button>
-        ))}
-      </div>
-
-      {answer !== null && !showResult && (
-        <Button size="sm" onClick={handleCheck}>{t.checkAnswer}</Button>
-      )}
-
-      {showResult && (
-        <div className={cn('p-3 rounded text-sm', isCorrect ? 'bg-green-500/10' : 'bg-destructive/10')}>
-          <p className={cn('font-medium', isCorrect ? 'text-green-600' : 'text-destructive')}>
-            {isCorrect ? t.correct : t.incorrect}
-          </p>
-          <p className="mt-1 text-muted-foreground">{question.explanation}</p>
-        </div>
-      )}
-    </div>
   );
 }
