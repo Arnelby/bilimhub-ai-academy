@@ -622,209 +622,26 @@ export const fractionsMiniLessons: MLMiniLesson[] = [
   {
     id: 'ml-1',
     title: {
-      en: 'Understanding Numerator & Denominator',
-      ru: 'Понимание числителя и знаменателя',
-      kg: 'Числитель жана бөлүүчүнү түшүнүү'
+      en: 'Fractions Explained Through ORT Example',
+      ru: 'Дроби на примере из ОРТ',
+      kg: 'ОРТ мисалы аркылуу бөлчөктөр'
     },
-    duration: '3 min',
+    duration: '10 min',
     concept: {
-      en: 'The parts of a fraction',
-      ru: 'Части дроби',
-      kg: 'Бөлчөктүн бөлүктөрү'
+      en: 'Learn fractions through a real ORT exam example',
+      ru: 'Изучите дроби на реальном примере из ОРТ',
+      kg: 'Чыныгы ОРТ мисалы аркылуу бөлчөктөрдү үйрөнүңүз'
     },
     explanation: {
-      en: `The numerator (top number) tells you HOW MANY parts you have.
-The denominator (bottom number) tells you HOW MANY EQUAL PARTS make up the whole.
-
-Think of it like slices of pizza:
-- Denominator = total slices the pizza was cut into
-- Numerator = slices you're eating
-
-Memory trick: "Denominator is DOWN below!"`,
-      ru: `Числитель (верхнее число) говорит, СКОЛЬКО частей у вас есть.
-Знаменатель (нижнее число) говорит, НА СКОЛЬКО РАВНЫХ ЧАСТЕЙ разделено целое.
-
-Представьте как куски пиццы:
-- Знаменатель = общее количество кусков
-- Числитель = куски, которые вы едите
-
-Подсказка для памяти: "Знаменатель ЗНАЕТ, сколько всего!"`,
-      kg: `Числитель (үстүнкү сан) сизде КАНЧА бөлүк бар экенин айтат.
-Бөлүүчү (астыңкы сан) бүтүн КАНЧА БИРДЕЙ БӨЛҮККӨ бөлүнгөнүн айтат.
-
-Пицца тилимдери сыяктуу элестетиңиз:
-- Бөлүүчү = пицца канча тилимге бөлүнгөн
-- Числитель = сиз жеп жаткан тилимдер
-
-Эстеп калуу ыкмасы: "Бөлүүчү АСТЫНДА!"`
+      en: 'Watch the video where she explains fractions step-by-step using a real ORT exam problem. Learning through examples is one of the most effective ways to understand mathematics!',
+      ru: 'Смотрите видео, где она объясняет дроби шаг за шагом на примере реальной задачи из ОРТ. Обучение на примерах — один из самых эффективных способов понять математику!',
+      kg: 'Видеону көрүңүз, ал чыныгы ОРТ маселесинин мисалында бөлчөктөрдү кадам-кадам менен түшүндүрөт. Мисалдар аркылуу окуу математиканы түшүнүүнүн эң эффективдүү ыкмаларынын бири!'
     },
     videoUrl: 'https://www.youtube.com/embed/UJbYTA-1rYc',
     keyTakeaway: {
-      en: 'Numerator = parts you have, Denominator = total equal parts',
-      ru: 'Числитель = ваши части, Знаменатель = всего равных частей',
-      kg: 'Числитель = сиздеги бөлүктөр, Бөлүүчү = бардык бирдей бөлүктөр'
-    }
-  },
-  {
-    id: 'ml-2',
-    title: {
-      en: 'Finding Common Denominators',
-      ru: 'Нахождение общего знаменателя',
-      kg: 'Жалпы бөлүүчүнү табуу'
-    },
-    duration: '4 min',
-    concept: {
-      en: 'LCD for fraction operations',
-      ru: 'НОЗ для операций с дробями',
-      kg: 'Бөлчөк амалдары үчүн ЭКБ'
-    },
-    explanation: {
-      en: `To add or subtract fractions, you NEED a common denominator.
-
-Finding the LCD (Least Common Denominator):
-1. List multiples of each denominator
-2. Find the smallest number in BOTH lists
-
-Example: LCD of 4 and 6
-- Multiples of 4: 4, 8, 12, 16...
-- Multiples of 6: 6, 12, 18...
-- LCD = 12`,
-      ru: `Чтобы сложить или вычесть дроби, вам НУЖЕН общий знаменатель.
-
-Нахождение НОЗ (Наименьшего Общего Знаменателя):
-1. Выпишите кратные каждого знаменателя
-2. Найдите наименьшее число в ОБОИХ списках
-
-Пример: НОЗ 4 и 6
-- Кратные 4: 4, 8, 12, 16...
-- Кратные 6: 6, 12, 18...
-- НОЗ = 12`,
-      kg: `Бөлчөктөрдү кошуу же кемитүү үчүн жалпы бөлүүчү КЕРЕК.
-
-ЭКБ (Эң Кичине жалпы Бөлүүчү) табуу:
-1. Ар бир бөлүүчүнүн эселиктерин жазыңыз
-2. ЭКИ тизмеде тең бар эң кичине санды табыңыз
-
-Мисал: 4 жана 6нын ЭКБсы
-- 4түн эселиктери: 4, 8, 12, 16...
-- 6нын эселиктери: 6, 12, 18...
-- ЭКБ = 12`
-    },
-    videoUrl: 'https://www.youtube.com/embed/UJbYTA-1rYc',
-    keyTakeaway: {
-      en: 'LCD = smallest number divisible by both denominators',
-      ru: 'НОЗ = наименьшее число, делящееся на оба знаменателя',
-      kg: 'ЭКБ = эки бөлүүчүгө тең бөлүнгөн эң кичине сан'
-    }
-  },
-  {
-    id: 'ml-3',
-    title: {
-      en: 'Simplifying Fractions',
-      ru: 'Сокращение дробей',
-      kg: 'Бөлчөктөрдү жөнөкөйлөштүрүү'
-    },
-    duration: '3 min',
-    concept: {
-      en: 'Reducing to lowest terms',
-      ru: 'Приведение к несократимому виду',
-      kg: 'Эң жөнөкөй түрүнө келтирүү'
-    },
-    explanation: {
-      en: `A fraction is in simplest form when numerator and denominator share no common factors except 1.
-
-Steps to simplify:
-1. Find the GCD (Greatest Common Divisor) of numerator and denominator
-2. Divide both by the GCD
-
-Example: Simplify 12/18
-- Factors of 12: 1, 2, 3, 4, 6, 12
-- Factors of 18: 1, 2, 3, 6, 9, 18
-- GCD = 6
-- 12÷6 / 18÷6 = 2/3`,
-      ru: `Дробь в простейшей форме, когда числитель и знаменатель не имеют общих множителей кроме 1.
-
-Шаги для сокращения:
-1. Найдите НОД (Наибольший Общий Делитель) числителя и знаменателя
-2. Разделите оба на НОД
-
-Пример: Сократите 12/18
-- Делители 12: 1, 2, 3, 4, 6, 12
-- Делители 18: 1, 2, 3, 6, 9, 18
-- НОД = 6
-- 12÷6 / 18÷6 = 2/3`,
-      kg: `Бөлчөк эң жөнөкөй түрүндө, качан числитель жана бөлүүчүдө 1ден башка жалпы бөлүүчү жок болсо.
-
-Жөнөкөйлөштүрүү кадамдары:
-1. Числитель менен бөлүүчүнүн ЭҮББ (Эң Үлкөн жалпы Бөлүүчүсүн) табыңыз
-2. Экөөнү тең ЭҮББга бөлүңүз
-
-Мисал: 12/18 ди жөнөкөйлөштүрүңүз
-- 12нин бөлүүчүлөрү: 1, 2, 3, 4, 6, 12
-- 18дин бөлүүчүлөрү: 1, 2, 3, 6, 9, 18
-- ЭҮББ = 6
-- 12÷6 / 18÷6 = 2/3`
-    },
-    videoUrl: 'https://www.youtube.com/embed/UJbYTA-1rYc',
-    keyTakeaway: {
-      en: 'Always simplify your final answer!',
-      ru: 'Всегда сокращайте окончательный ответ!',
-      kg: 'Акыркы жообуңузду дайыма жөнөкөйлөштүрүңүз!'
-    }
-  },
-  {
-    id: 'ml-4',
-    title: {
-      en: 'The Keep-Change-Flip Method',
-      ru: 'Метод Оставь-Измени-Переверни',
-      kg: 'Калтыр-Өзгөрт-Оодар ыкмасы'
-    },
-    duration: '3 min',
-    concept: {
-      en: 'Dividing fractions easily',
-      ru: 'Легкое деление дробей',
-      kg: 'Бөлчөктөрдү оңой бөлүү'
-    },
-    explanation: {
-      en: `Dividing fractions is easy with Keep-Change-Flip:
-
-1. KEEP the first fraction as is
-2. CHANGE the ÷ sign to ×
-3. FLIP the second fraction (swap numerator and denominator)
-
-Example: 2/3 ÷ 4/5
-- Keep: 2/3
-- Change: ÷ becomes ×
-- Flip: 4/5 becomes 5/4
-- Calculate: 2/3 × 5/4 = 10/12 = 5/6`,
-      ru: `Делить дроби легко с методом Оставь-Измени-Переверни:
-
-1. ОСТАВЬ первую дробь как есть
-2. ИЗМЕНИ знак ÷ на ×
-3. ПЕРЕВЕРНИ вторую дробь (поменяй числитель и знаменатель)
-
-Пример: 2/3 ÷ 4/5
-- Оставь: 2/3
-- Измени: ÷ становится ×
-- Переверни: 4/5 становится 5/4
-- Вычисли: 2/3 × 5/4 = 10/12 = 5/6`,
-      kg: `Калтыр-Өзгөрт-Оодар менен бөлчөктөрдү бөлүү оңой:
-
-1. Биринчи бөлчөктү КАЛТЫР
-2. ÷ белгисин × га ӨЗГӨРТ
-3. Экинчи бөлчөктү ООДАР (числитель менен бөлүүчүнү алмаштыр)
-
-Мисал: 2/3 ÷ 4/5
-- Калтыр: 2/3
-- Өзгөрт: ÷ → ×
-- Оодар: 4/5 → 5/4
-- Эсепте: 2/3 × 5/4 = 10/12 = 5/6`
-    },
-    videoUrl: 'https://www.youtube.com/embed/UJbYTA-1rYc',
-    keyTakeaway: {
-      en: 'Keep-Change-Flip makes division multiplication!',
-      ru: 'Оставь-Измени-Переверни превращает деление в умножение!',
-      kg: 'Калтыр-Өзгөрт-Оодар бөлүүнү көбөйтүүгө айлантат!'
+      en: 'Practice with real ORT examples to master fractions faster',
+      ru: 'Практикуйтесь на реальных примерах ОРТ, чтобы быстрее освоить дроби',
+      kg: 'Бөлчөктөрдү тезирээк өздөштүрүү үчүн чыныгы ОРТ мисалдарында машыгыңыз'
     }
   }
 ];
