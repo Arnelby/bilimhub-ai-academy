@@ -38,10 +38,20 @@ import { cn } from '@/lib/utils';
 import { Language } from '@/lib/i18n';
 import { toast } from 'sonner';
 import pizzaFraction34 from '@/assets/lessons/pizza-fraction-3-4.png';
+import fractionOperationsCheatsheet from '@/assets/lessons/fraction-operations-cheatsheet.png';
+import fractionConversionFlowchart from '@/assets/lessons/fraction-conversion-flowchart.png';
+import fractionDivisionSteps from '@/assets/lessons/fraction-division-steps.png';
 
 // Map of section IDs to actual images
 const sectionImages: Record<string, string> = {
   'theory-1': pizzaFraction34,
+};
+
+// Map of diagram IDs to actual images
+const diagramImages: Record<string, string> = {
+  'diagram-1': fractionOperationsCheatsheet,
+  'diagram-2': fractionConversionFlowchart,
+  'diagram-3': fractionDivisionSteps,
 };
 
 type TabType = 'basic' | 'mini' | 'diagrams' | 'mistakes' | 'miniTests' | 'fullTest' | 'dynamic';
@@ -486,10 +496,18 @@ export default function FractionsLesson() {
                       </CardHeader>
                       <CardContent>
                         <p className="text-muted-foreground mb-4">{getText(diagram.description, language)}</p>
-                        <div className="bg-muted/50 border-2 border-dashed border-muted-foreground/30 rounded-lg p-8 text-center">
-                          <ImageIcon className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
-                          <p className="text-sm text-muted-foreground">{getText(diagram.imagePlaceholder, language)}</p>
-                        </div>
+                        {diagramImages[diagram.id] ? (
+                          <img 
+                            src={diagramImages[diagram.id]} 
+                            alt={getText(diagram.title, language)}
+                            className="w-full rounded-lg"
+                          />
+                        ) : (
+                          <div className="bg-muted/50 border-2 border-dashed border-muted-foreground/30 rounded-lg p-8 text-center">
+                            <ImageIcon className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
+                            <p className="text-sm text-muted-foreground">{getText(diagram.imagePlaceholder, language)}</p>
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
                   ))}
