@@ -1613,8 +1613,11 @@ export default function DynamicLessonViewer() {
     );
   }
 
-  // Error state
-  if (error || !data) {
+  // Check if we have fallback data available for this topic
+  const hasFallbackContent = normalizedTopicId === 'fractions' || normalizedTopicId === 'exponents' || normalizedTopicId === 'quadratics';
+
+  // Error state - only show error if we have no fallback content
+  if ((error || !data) && !hasFallbackContent) {
     return (
       <Layout>
         <div className="container mx-auto px-4 py-8 text-center">
@@ -1691,19 +1694,21 @@ export default function DynamicLessonViewer() {
 
               {/* Basic Lesson Tab */}
               <TabsContent value="basic" className="mt-0 space-y-6">
-                <div className="flex items-center gap-3">
-                  <BookOpen className="h-6 w-6 text-primary" />
-                  <h2 className="text-2xl font-bold">{getText(data.basic_lesson.title, language)}</h2>
-                </div>
-                
-                {/* Video */}
-                {data.basic_lesson.video && (
-                  <Card>
-                    <CardContent className="pt-6">
-                      <VideoEmbed url={topicVideos[normalizedTopicId!] || data.basic_lesson.video} />
-                    </CardContent>
-                  </Card>
-                )}
+                {data?.basic_lesson ? (
+                  <>
+                    <div className="flex items-center gap-3">
+                      <BookOpen className="h-6 w-6 text-primary" />
+                      <h2 className="text-2xl font-bold">{getText(data.basic_lesson.title, language)}</h2>
+                    </div>
+                    
+                    {/* Video */}
+                    {data.basic_lesson.video && (
+                      <Card>
+                        <CardContent className="pt-6">
+                          <VideoEmbed url={topicVideos[normalizedTopicId!] || data.basic_lesson.video} />
+                        </CardContent>
+                      </Card>
+                    )}
 
                 {/* Theory/Content */}
                 <Card>
@@ -1800,6 +1805,15 @@ export default function DynamicLessonViewer() {
                     </Button>
                   </CardContent>
                 </Card>
+                  </>
+                ) : (
+                  <div className="text-center py-12">
+                    <BookOpen className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                    <p className="text-muted-foreground">
+                      {language === 'ru' ? 'Основной урок будет добавлен позже. Вы можете пройти мини-тесты и полный тест.' : 'Basic lesson content coming soon. You can take the mini-tests and full test.'}
+                    </p>
+                  </div>
+                )}
               </TabsContent>
 
               {/* Mini Lessons Tab */}
@@ -1807,32 +1821,38 @@ export default function DynamicLessonViewer() {
                 <div className="flex items-center gap-3">
                   <PlayCircle className="h-6 w-6 text-primary" />
                   <h2 className="text-2xl font-bold">{t.tabs.mini}</h2>
-                  <Badge variant="outline">{data.mini_lessons?.length || 0} {language === 'ru' ? 'уроков' : 'lessons'}</Badge>
+                  <Badge variant="outline">{data?.mini_lessons?.length || 0} {language === 'ru' ? 'уроков' : 'lessons'}</Badge>
                 </div>
 
-                {data.mini_lessons?.map((lesson, idx) => (
-                  <Card key={lesson.id}>
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="flex items-center gap-2">
-                          <Badge>{idx + 1}</Badge>
-                          {getText(lesson.title, language)}
-                        </CardTitle>
-                        <Badge variant="outline">
-                          <Clock className="h-3 w-3 mr-1" />
-                          {lesson.duration}
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <p className="text-muted-foreground">{getText(lesson.summary, language)}</p>
-                      <VideoEmbed url={lesson.video} />
-                      <div className="bg-muted/50 p-4 rounded-lg">
-                        <p className="whitespace-pre-wrap">{getText(lesson.content, language)}</p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                {data?.mini_lessons && data.mini_lessons.length > 0 ? (
+                  data.mini_lessons.map((lesson, idx) => (
+                    <Card key={lesson.id}>
+                      <CardHeader>
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="flex items-center gap-2">
+                            <Badge>{idx + 1}</Badge>
+                            {getText(lesson.title, language)}
+                          </CardTitle>
+                          <Badge variant="outline">
+                            <Clock className="h-3 w-3 mr-1" />
+                            {lesson.duration}
+                          </Badge>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <p className="text-muted-foreground">{getText(lesson.summary, language)}</p>
+                        <VideoEmbed url={lesson.video} />
+                        <div className="bg-muted/50 p-4 rounded-lg">
+                          <p className="whitespace-pre-wrap">{getText(lesson.content, language)}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    {language === 'ru' ? 'Мини-уроки будут добавлены позже' : 'Mini lessons coming soon'}
+                  </div>
+                )}
               </TabsContent>
 
               {/* Diagrams Tab */}
@@ -1840,27 +1860,33 @@ export default function DynamicLessonViewer() {
                 <div className="flex items-center gap-3">
                   <LayoutGrid className="h-6 w-6 text-primary" />
                   <h2 className="text-2xl font-bold">{t.tabs.diagrams}</h2>
-                  <Badge variant="outline">{data.diagrams?.length || 0}</Badge>
+                  <Badge variant="outline">{data?.diagrams?.length || 0}</Badge>
                 </div>
 
-                <div className="grid gap-6 md:grid-cols-2">
-                  {data.diagrams?.map((diagram) => (
-                    <Card key={diagram.id}>
-                      <CardHeader>
-                        <CardTitle>{getText(diagram.title, language)}</CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        <p className="text-muted-foreground text-sm">{getText(diagram.description, language)}</p>
-                        <DiagramImage 
-                          imagePath={diagram.image} 
-                          diagramId={diagram.id}
-                          title={getText(diagram.title, language)} 
-                          topicId={normalizedTopicId || ''} 
-                        />
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
+                {data?.diagrams && data.diagrams.length > 0 ? (
+                  <div className="grid gap-6 md:grid-cols-2">
+                    {data.diagrams.map((diagram) => (
+                      <Card key={diagram.id}>
+                        <CardHeader>
+                          <CardTitle>{getText(diagram.title, language)}</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                          <p className="text-muted-foreground text-sm">{getText(diagram.description, language)}</p>
+                          <DiagramImage 
+                            imagePath={diagram.image} 
+                            diagramId={diagram.id}
+                            title={getText(diagram.title, language)} 
+                            topicId={normalizedTopicId || ''} 
+                          />
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    {language === 'ru' ? 'Диаграммы будут добавлены позже' : 'Diagrams coming soon'}
+                  </div>
+                )}
               </TabsContent>
 
               {/* Common Mistakes Tab */}
@@ -1868,43 +1894,49 @@ export default function DynamicLessonViewer() {
                 <div className="flex items-center gap-3">
                   <AlertTriangle className="h-6 w-6 text-warning" />
                   <h2 className="text-2xl font-bold">{t.tabs.mistakes}</h2>
-                  <Badge variant="outline">{data.common_mistakes?.length || 0}</Badge>
+                  <Badge variant="outline">{data?.common_mistakes?.length || 0}</Badge>
                 </div>
 
-                {data.common_mistakes?.map((mistake, idx) => (
-                  <Card key={mistake.id}>
-                    <CardContent className="pt-6 space-y-4">
-                      <div className="flex items-start gap-3">
-                        <XCircle className="h-6 w-6 text-destructive mt-0.5" />
-                        <div>
-                          <h4 className="font-semibold text-destructive">{language === 'ru' ? 'Ошибка' : 'Mistake'} {idx + 1}</h4>
-                          <p className="text-muted-foreground">{getText(mistake.mistake, language)}</p>
+                {data?.common_mistakes && data.common_mistakes.length > 0 ? (
+                  data.common_mistakes.map((mistake, idx) => (
+                    <Card key={mistake.id}>
+                      <CardContent className="pt-6 space-y-4">
+                        <div className="flex items-start gap-3">
+                          <XCircle className="h-6 w-6 text-destructive mt-0.5" />
+                          <div>
+                            <h4 className="font-semibold text-destructive">{language === 'ru' ? 'Ошибка' : 'Mistake'} {idx + 1}</h4>
+                            <p className="text-muted-foreground">{getText(mistake.mistake, language)}</p>
+                          </div>
                         </div>
-                      </div>
-                      
-                      <div className="flex items-start gap-3">
-                        <Lightbulb className="h-6 w-6 text-warning mt-0.5" />
-                        <div>
-                          <h4 className="font-semibold text-warning">{language === 'ru' ? 'Почему это неправильно' : 'Why it is wrong'}</h4>
-                          <p className="text-muted-foreground">{getText(mistake.why, language)}</p>
+                        
+                        <div className="flex items-start gap-3">
+                          <Lightbulb className="h-6 w-6 text-warning mt-0.5" />
+                          <div>
+                            <h4 className="font-semibold text-warning">{language === 'ru' ? 'Почему это неправильно' : 'Why it is wrong'}</h4>
+                            <p className="text-muted-foreground">{getText(mistake.why, language)}</p>
+                          </div>
                         </div>
-                      </div>
-                      
-                      <div className="flex items-start gap-3">
-                        <CheckCircle className="h-6 w-6 text-green-500 mt-0.5" />
-                        <div>
-                          <h4 className="font-semibold text-green-500">{language === 'ru' ? 'Как исправить' : 'How to fix'}</h4>
-                          <p className="text-muted-foreground">{getText(mistake.fix, language)}</p>
+                        
+                        <div className="flex items-start gap-3">
+                          <CheckCircle className="h-6 w-6 text-green-500 mt-0.5" />
+                          <div>
+                            <h4 className="font-semibold text-green-500">{language === 'ru' ? 'Как исправить' : 'How to fix'}</h4>
+                            <p className="text-muted-foreground">{getText(mistake.fix, language)}</p>
+                          </div>
                         </div>
-                      </div>
 
-                      <div className="bg-muted/50 p-3 rounded-lg">
-                        <h4 className="font-medium mb-1">{language === 'ru' ? 'Пример' : 'Example'}</h4>
-                        <p className="font-mono text-sm">{getText(mistake.example, language)}</p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                        <div className="bg-muted/50 p-3 rounded-lg">
+                          <h4 className="font-medium mb-1">{language === 'ru' ? 'Пример' : 'Example'}</h4>
+                          <p className="font-mono text-sm">{getText(mistake.example, language)}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    {language === 'ru' ? 'Типичные ошибки будут добавлены позже' : 'Common mistakes coming soon'}
+                  </div>
+                )}
               </TabsContent>
 
               {/* Mini-Tests Tab */}
