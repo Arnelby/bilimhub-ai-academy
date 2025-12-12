@@ -187,8 +187,14 @@ export default function DynamicLessonViewer() {
   const { language, setLanguage } = useLanguage();
   const [activeTab, setActiveTab] = useState<TabType>('basic');
   
+  // Mapping for files with different names than the topic ID
+  const fileNameMap: Record<string, string> = {
+    'fractions': 'fraction', // file is fraction.json not fractions.json
+  };
+  
   // Fetch lesson data from Supabase storage
-  const bucketPath = `${topicId}/${topicId}.json`;
+  const fileName = fileNameMap[topicId || ''] || topicId;
+  const bucketPath = `${topicId}/${fileName}.json`;
   const { data, loading, error } = useLessonData(bucketPath);
   
   // Mini-tests state
