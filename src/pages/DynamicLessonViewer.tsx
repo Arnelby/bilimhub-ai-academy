@@ -542,8 +542,20 @@ function VideoEmbed({ url }: { url?: string }) {
 }
 
 // Diagram Image component with auto-generate fallback
-function DiagramImage({ imagePath, title, topicId }: { imagePath: string; title: string; topicId: string }) {
+function DiagramImage({ imagePath, diagramId, title, topicId }: { imagePath: string; diagramId: string; title: string; topicId: string }) {
   const images = topicImages[topicId] || {};
+  
+  // First check if we have a static image for this diagram ID
+  const staticImage = images[diagramId];
+  if (staticImage) {
+    return (
+      <img 
+        src={staticImage} 
+        alt={title}
+        className="w-full rounded-lg shadow-md"
+      />
+    );
+  }
   
   // Check if it's an auto-generate placeholder
   if (imagePath === 'auto-generate' || !imagePath) {
@@ -553,18 +565,6 @@ function DiagramImage({ imagePath, title, topicId }: { imagePath: string; title:
         <p className="text-muted-foreground text-sm">{title}</p>
         <Badge variant="outline" className="mt-2">AI Generated</Badge>
       </div>
-    );
-  }
-
-  // Check if we have a static image for this diagram ID
-  const staticImage = images[imagePath];
-  if (staticImage) {
-    return (
-      <img 
-        src={staticImage} 
-        alt={title}
-        className="w-full rounded-lg shadow-md"
-      />
     );
   }
 
@@ -1101,6 +1101,7 @@ export default function DynamicLessonViewer() {
                         <p className="text-muted-foreground text-sm">{getText(diagram.description, language)}</p>
                         <DiagramImage 
                           imagePath={diagram.image} 
+                          diagramId={diagram.id}
                           title={getText(diagram.title, language)} 
                           topicId={topicId || ''} 
                         />
